@@ -1,3 +1,4 @@
+import "dotenv/config";
 /**
  * Dados de exemplo (fictícios) para demonstrar o dashboard sem depender de
  * acesso à internet para a CCEE/RFB. Não representam empresas reais.

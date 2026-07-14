@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE "CandidateCompany" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "cnpj" TEXT NOT NULL,
     "cnpjRaiz" TEXT NOT NULL,
     "razaoSocial" TEXT NOT NULL,
@@ -12,15 +12,17 @@ CREATE TABLE "CandidateCompany" (
     "porte" TEXT,
     "situacaoCadastral" TEXT,
     "dataAbertura" TEXT,
-    "capitalSocial" REAL,
+    "capitalSocial" DOUBLE PRECISION,
     "source" TEXT NOT NULL DEFAULT 'RFB',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CandidateCompany_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "MigratedConsumer" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "cnpj" TEXT NOT NULL,
     "cnpjRaiz" TEXT NOT NULL,
     "nomeConsumidor" TEXT NOT NULL,
@@ -30,19 +32,23 @@ CREATE TABLE "MigratedConsumer" (
     "dataReferencia" TEXT,
     "source" TEXT NOT NULL DEFAULT 'CCEE',
     "rawData" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "MigratedConsumer_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "SyncLog" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "source" TEXT NOT NULL,
-    "startedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "finishedAt" DATETIME,
+    "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "finishedAt" TIMESTAMP(3),
     "status" TEXT NOT NULL DEFAULT 'running',
     "recordsProcessed" INTEGER NOT NULL DEFAULT 0,
-    "message" TEXT
+    "message" TEXT,
+
+    CONSTRAINT "SyncLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
