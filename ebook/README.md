@@ -14,6 +14,23 @@ Projeto do e-book em duas partes (estratégia de funil: Parte 1 a R$ 9,90 + Part
 | `pagina-de-vendas.md` | Texto da página de vendas + order bump para a Kiwify. |
 | `capa.html` / `capa.png` / `o-ponto-de-virada.html` | Versões antigas (título "O Ponto de Virada") — mantidas como histórico. |
 
+### Versões traduzidas
+
+| Arquivo | O que é |
+| --- | --- |
+| `parte-1-en.pdf` / `parte-2-en.pdf` | Inglês: *Rise, Fall, and Comeback* (Parts 1 e 2). |
+| `rise-fall-comeback-complete.epub` | Inglês: livro completo para Amazon KDP. |
+| `capa-en.png` / `capa-en.html` | Capa em inglês (1600x2560). |
+| `parte-1-es.pdf` / `parte-2-es.pdf` | Espanhol: *Ascenso, Caída y Remontada* (Partes 1 e 2). |
+| `ascenso-caida-remontada-completo.epub` | Espanhol: livro completo para Amazon KDP. |
+| `capa-es.png` / `capa-es.html` | Capa em espanhol (1600x2560). |
+
+Nas traduções, os valores em reais ganharam equivalência aproximada em dólar entre
+parênteses, e termos brasileiros (Pronampe, Lei Maria da Penha, laje, lan house)
+receberam uma explicação curta para o leitor estrangeiro. Cada idioma é um cadastro
+separado na KDP (a Amazon não traduz automaticamente). Recomenda-se revisão por um
+leitor fluente antes de publicar.
+
 ## Proteção de nomes
 
 A história é real, mas nomes de empresas e das pessoas juridicamente sensíveis foram
