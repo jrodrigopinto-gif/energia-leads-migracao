@@ -7,7 +7,7 @@ Projeto do e-book em duas partes (estratégia de funil: Parte 1 a R$ 9,90 + Part
 | Arquivo | O que é |
 | --- | --- |
 | `parte-1.pdf` | **PRONTO PARA VENDER.** Parte 1 completa: capa, prólogo e capítulos 1-8 + página-gancho para a Parte 2. |
-| `parte-2.pdf` | Parte 2 (Manual): introdução + capítulos 9 e 10 prontos; capítulos 11 e 12 em produção. |
+| `parte-2.pdf` | **COMPLETA.** Parte 2 (Manual): introdução, capítulos 9-12 e conclusão. |
 | `parte-1.html` / `parte-2.html` | Fontes editáveis dos volumes. Para regerar o PDF: abrir no navegador, Ctrl+P, salvar como PDF (ativar "Gráficos de fundo"). |
 | `capa-ascensao-queda-retomada.png` | Capa oficial (1600x2560) — imagem do produto na Kiwify. |
 | `capa-ascensao-queda-retomada.html` | Fonte editável da capa. |
@@ -22,10 +22,10 @@ repositório de propósito — guarde-a apenas com o autor.
 
 ## O que falta para fechar o produto
 
-- [ ] Capítulo 11 — A Conversa que Salva o Casamento (aguardando material do autor)
-- [ ] Capítulo 12 — Acelerando a Receita com Inteligência B2B (aguardando material do autor)
-- [ ] Conclusão / fechamento da Parte 2
-- [ ] Revisão final de valores e datas pelo autor
+- [x] Capítulo 11 — A Conversa que Salva o Casamento
+- [x] Capítulo 12 — Acelerando a Receita com Inteligência B2B
+- [x] Conclusão — O Novo Começo
+- [ ] Revisão final do autor (especialmente caps. 11, 12 e conclusão, escritos pelo coautor)
 - [ ] Subir na Kiwify: parte-1.pdf como produto principal (R$ 9,90), parte-2.pdf como order bump (R$ 47)
 - [ ] O Pacto: o lançamento só é oficial após a conversa com a Vivian
 
