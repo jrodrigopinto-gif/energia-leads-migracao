@@ -1,47 +1,35 @@
-# E-book "O Ponto de Virada" — Kit de Montagem
+# E-book "Ascensão, Queda e Retomada" — Kit de Montagem
 
-Tudo o que falta para publicar o e-book na Kiwify está nesta pasta. O único item que
-não está aqui é o **texto dos Capítulos 1 a 12 + Conclusão**, que está na conversa em
-que foi escrito — copie de lá e cole nos lugares indicados abaixo.
+Projeto do e-book em duas partes (estratégia de funil: Parte 1 a R$ 9,90 + Parte 2 como upsell).
 
 ## Arquivos
 
 | Arquivo | O que é |
 | --- | --- |
-| `capa.png` | Capa pronta (1600×2560 px) — use como imagem do produto na Kiwify. |
-| `capa.html` | Fonte da capa. Edite e tire novo screenshot se quiser mudar algo. |
-| `o-ponto-de-virada.html` | O livro diagramado (capa + página de rosto + sumário + 13 seções), pronto para virar PDF. |
-| `pagina-de-vendas.md` | Texto completo da página de vendas para colar na Kiwify. |
+| `parte-1.pdf` | **PRONTO PARA VENDER.** Parte 1 completa: capa, prólogo e capítulos 1-8 + página-gancho para a Parte 2. |
+| `parte-2.pdf` | Parte 2 (Manual): introdução + capítulos 9 e 10 prontos; capítulos 11 e 12 em produção. |
+| `parte-1.html` / `parte-2.html` | Fontes editáveis dos volumes. Para regerar o PDF: abrir no navegador, Ctrl+P, salvar como PDF (ativar "Gráficos de fundo"). |
+| `capa-ascensao-queda-retomada.png` | Capa oficial (1600x2560) — imagem do produto na Kiwify. |
+| `capa-ascensao-queda-retomada.html` | Fonte editável da capa. |
+| `pagina-de-vendas.md` | Texto da página de vendas + order bump para a Kiwify. |
+| `capa.html` / `capa.png` / `o-ponto-de-virada.html` | Versões antigas (título "O Ponto de Virada") — mantidas como histórico. |
 
-## Como finalizar o PDF (10 minutos)
+## Proteção de nomes
 
-1. **Cole os capítulos:** abra `o-ponto-de-virada.html` em um editor de texto e
-   substitua cada bloco `[ COLE AQUI O TEXTO DO CAPÍTULO X ]` pelos parágrafos do
-   capítulo, cada parágrafo entre `<p>` e `</p>`. Atualize também os títulos dos
-   capítulos (nas páginas e no Sumário).
-   - *Alternativa via Word/Google Docs:* se preferir montar no Word, cole os capítulos
-     lá, selecione tudo (`Ctrl+A`) e justifique (`Ctrl+J`), depois exporte em PDF —
-     e use apenas a `capa.png` daqui como capa e imagem do produto.
-2. **Gere o PDF:** abra o arquivo no navegador (duplo clique), tecle `Ctrl+P`,
-   escolha **Salvar como PDF** e ative **"Gráficos de fundo"** (Background graphics).
-   O aviso amarelo do topo não sai na impressão.
-3. **Confira:** capa em azul-marinho com dourado, texto justificado, um capítulo por
-   página iniciando com capitular dourada.
+A história é real, mas nomes de empresas e das pessoas juridicamente sensíveis foram
+trocados por fictícios nos textos publicados. A tabela De/Para real NÃO está neste
+repositório de propósito — guarde-a apenas com o autor.
 
-## Checklist antes de vender
+## O que falta para fechar o produto
 
-- [ ] PDF gerado e revisado (sem blocos amarelos sobrando);
-- [ ] `capa.png` enviada como imagem do produto na Kiwify;
-- [ ] Descrição do produto preenchida com o texto de `pagina-de-vendas.md`;
-- [ ] Preço e garantia de 7 dias configurados;
-- [ ] **O Pacto:** o lançamento só é oficial após a conversa com a Vivian.
+- [ ] Capítulo 11 — A Conversa que Salva o Casamento (aguardando material do autor)
+- [ ] Capítulo 12 — Acelerando a Receita com Inteligência B2B (aguardando material do autor)
+- [ ] Conclusão / fechamento da Parte 2
+- [ ] Revisão final de valores e datas pelo autor
+- [ ] Subir na Kiwify: parte-1.pdf como produto principal (R$ 9,90), parte-2.pdf como order bump (R$ 47)
+- [ ] O Pacto: o lançamento só é oficial após a conversa com a Vivian
 
-## Especificações de design (para referência)
+## Especificações de design
 
-- Fundo: azul-marinho profundo `#0A192F`
-- Detalhes: dourado `#D4AF37`
-- Título: League Spartan ExtraBold, branco
-- Subtítulo: Montserrat Light, dourado
-- Autor: Montserrat Bold, branco, espaçamento largo entre letras
-
-As fontes já estão embutidas nos arquivos HTML — não é preciso instalar nada.
+Fundo azul-marinho `#0A192F`, detalhes dourados `#D4AF37`, títulos em League Spartan
+ExtraBold, corpo em Montserrat. Fontes embutidas nos HTML — não é preciso instalar nada.

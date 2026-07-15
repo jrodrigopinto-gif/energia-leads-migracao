@@ -1,92 +1,102 @@
 # Página de Vendas — Kiwify
 
-Texto pronto para colar na descrição do produto na Kiwify. Ajuste os trechos entre colchetes antes de publicar.
+Texto pronto para colar na descrição do produto na Kiwify.
+Estratégia: **Parte 1 a R$ 9,90 (tripwire)** + **Parte 2 como order bump/upsell (R$ 47)**.
 
 ---
 
-## Headline (título do produto)
+## PRODUTO PRINCIPAL — Parte 1 (R$ 9,90)
 
-**O Ponto de Virada — Como conquistar o topo nas vendas e recuperar o controle financeiro depois do colapso**
+### Headline (título do produto)
 
-## Sub-headline
+**Ascensão, Queda e Retomada — A história real de quem chegou ao topo nas vendas, perdeu tudo em silêncio e está reconstruindo cada tijolo**
 
-Ele estava no topo. Perdeu tudo. E reconstruiu — com método. Este e-book é o mapa
-honesto de quem viveu a queda que ninguém posta no LinkedIn e voltou mais forte.
+### Sub-headline
 
----
+Ele estava no topo. Ganhando mais de R$ 20 mil por mês. E, por confiar demais, se viu
+com R$ 270 mil em dívidas — escondendo tudo da própria esposa. Esta é a queda que
+ninguém posta no LinkedIn, contada sem filtro. Pelo preço de um lanche.
 
-## Corpo da página
+### Corpo da página
 
 Você já sentiu o peso de manter a fachada de sucesso enquanto, por dentro, as contas
-não fechavam?
+não fecham?
 
-Eu senti. Por muito tempo.
+Eu senti. Por anos.
 
-Saí do chão de farmácia, como estoquista, para me tornar representante comercial de
-alto desempenho. Conquistei contratos, reconhecimento e dinheiro de verdade. E então,
-por confiar demais e me planejar de menos, vi tudo desmoronar — em silêncio, escondendo
-a realidade até de quem dormia ao meu lado.
+Saí do estoque de uma farmácia, onde comecei carregando caixas, para me tornar
+representante comercial de alto desempenho na indústria farmacêutica, com ganhos que
+a maioria dos brasileiros nem ousa sonhar. E então, por confiar cegamente em quem eu
+chamava de irmão, vi tudo desmoronar — em silêncio, escondendo a verdade de quem
+dormia ao meu lado.
 
-**"O Ponto de Virada" não é um livro de fórmulas mágicas.** É o relato real, capítulo a
-capítulo, de como eu:
+**Neste livro (Parte 1 — A História), você vai viver comigo:**
 
-- ✅ Construí uma carreira de vendas partindo do zero absoluto — e o que realmente faz
-  um vendedor se destacar;
-- ✅ Identifiquei os erros invisíveis que transformam sucesso financeiro em dívida
-  (antes que você cometa os mesmos);
-- ✅ Mapeei as dívidas, renegociei sob pressão e montei um plano de amortização que
-  cabia na vida real;
-- ✅ Tive a conversa mais difícil da minha vida — e por que a transparência salvou meu
-  casamento junto com as minhas finanças;
-- ✅ Voltei ao topo nas vendas com uma mentalidade blindada, que nenhuma crise derruba.
+- ✅ A infância na escassez absoluta — e a lição da "pele do frango" que carrego como troféu de humildade;
+- ✅ A escalada real: do chão de fábrica ao balcão, do balcão às licitações de R$ 250 mil/mês;
+- ✅ O blefe da entrevista que mudou minha vida (e por que o vendedor que recua perde o contrato);
+- ✅ A farmácia própria que virou pesadelo: falsa acusação, traição e roubo dentro do meu próprio negócio;
+- ✅ A "alavancagem suicida": como investi R$ 80 mil (sendo R$ 60 mil emprestados) em pirâmides de criptomoeda;
+- ✅ O aval para um amigo que me enterrou em dívidas que não eram minhas;
+- ✅ O labirinto do silêncio: o que acontece dentro de um homem que esconde um abismo financeiro da esposa;
+- ✅ E o dia em que decidi que essa história não terminaria no fundo do poço.
 
-### Para quem é este e-book
+### Para quem é este livro
 
-- Profissionais de vendas que querem crescer sem repetir os erros de quem já caiu;
-- Quem está endividado e precisa de um plano prático — não de julgamento;
-- Quem carrega sozinho o peso de uma situação financeira que a família não conhece;
-- Quem já perdeu tudo e precisa de prova viva de que dá para recomeçar.
+- Profissionais de vendas que estão subindo rápido — e não sabem que a queda mora ao lado;
+- Quem está endividado e carrega esse peso sozinho, sem coragem de contar à família;
+- Quem já emprestou o nome a um amigo, ou está prestes a fazer isso;
+- Quem precisa de prova viva de que dá para recomeçar.
 
-### O que você recebe
+### Oferta
 
-- 📘 E-book completo em PDF: 12 capítulos + conclusão;
-- 📄 Leitura direta, honesta e aplicável — sem enrolação;
-- 🔓 Acesso imediato após a confirmação do pagamento.
+Por apenas **R$ 9,90** — menos que um lanche, pela história completa que pode te
+poupar de perder R$ 270 mil.
 
----
+**[QUERO LER ESSA HISTÓRIA →]**
 
-## Oferta
+### Garantia
 
-~~De R$ [preço cheio]~~ por apenas **R$ [preço promocional]** — menos do que um lanche,
-pelo mapa completo de uma reconstrução financeira real.
-
-**[QUERO MEU PONTO DE VIRADA →]**
+**7 dias de garantia incondicional.** Se não fizer sentido para você, devolvemos 100%
+do valor. Sem perguntas.
 
 ---
 
-## Garantia
+## ORDER BUMP / UPSELL — Parte 2 (R$ 47)
 
-Risco zero: você tem **7 dias de garantia incondicional**. Se o conteúdo não fizer
-sentido para você, devolvemos 100% do valor. Sem perguntas.
+### Texto do order bump (aparece no checkout)
+
+**🔥 SIM! Quero também o MANUAL DE SOBREVIVÊNCIA E RETOMADA (Parte 2) por apenas + R$ 47**
+
+A história te mostra a queda; o Manual te entrega a saída. No plano prático você recebe:
+os **5 erros financeiros** que você nunca deve repetir, a **Triagem do Caos** (o método
+de 5 níveis para organizar as dívidas sem pânico — do agiota ao Pronampe), o passo a
+passo da **conversa que salva o casamento** e as estratégias de **vendas B2B** para
+acelerar a receita e sair do buraco mais rápido.
+
+---
 
 ## Bio do autor (rodapé)
 
-**José Rodrigo** começou como estoquista de farmácia e se tornou representante
-comercial de alto desempenho no mercado farmacêutico. Depois de enfrentar um colapso
-financeiro e reconstruir sua vida — e seu casamento — do zero, escreveu este livro para
-que ninguém precise atravessar a mesma travessia sem mapa.
+**José Rodrigo** começou como estoquista e se tornou representante comercial de alto
+desempenho na indústria farmacêutica, na Paraíba. Depois de enfrentar um colapso
+financeiro causado por confiança em quem não devia — e de quase perder tudo, inclusive
+a paz do seu casamento —, decidiu transformar a própria travessia em mapa para que
+ninguém precise atravessá-la sem guia.
 
----
-
-### FAQ (usar no bloco de perguntas frequentes da Kiwify)
+## FAQ (bloco de perguntas frequentes da Kiwify)
 
 **Como recebo o e-book?**
 O acesso é liberado automaticamente pela Kiwify após a confirmação do pagamento. Você
 recebe o PDF para ler em qualquer dispositivo.
 
+**A história é real?**
+Sim. Nomes de algumas pessoas e empresas foram alterados para proteger a privacidade
+dos envolvidos, mas os fatos, os valores e as lições são reais.
+
 **O conteúdo serve para quem não trabalha com vendas?**
-Sim. A parte financeira (mapeamento de dívidas, renegociação, plano de amortização e
-reconstrução) se aplica a qualquer pessoa.
+Sim. A Parte 1 é uma história de superação para qualquer pessoa; a Parte 2 (Manual)
+se aplica a qualquer um que esteja endividado ou queira se proteger.
 
 **Posso pedir reembolso?**
 Sim, em até 7 dias após a compra, direto pela plataforma.
