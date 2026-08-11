@@ -67,3 +67,86 @@ model SyncLog {
   recordsProcessed Int       @default(0)
   message          String?
 }
+
+// ─── Agente WhatsApp Farmácia ─────────────────────────────────────────────────
+
+// Estoque de produtos da farmácia (pode ser sincronizado com o sistema do PDV)
+model PharmacyProduct {
+  id                   String              @id @default(cuid())
+  code                 String              @unique
+  name                 String
+  description          String?
+  category             String?
+  price                Float
+  discountPct          Float               @default(0)
+  stock                Int                 @default(0)
+  unit                 String              @default("un")
+  requiresPrescription Boolean             @default(false)
+  active               Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  orderItems           PharmacyOrderItem[]
+
+  @@index([name])
+  @@index([category])
+}
+
+// Conversa aberta com um cliente no WhatsApp
+model PharmacyConversation {
+  id           String             @id @default(cuid())
+  waId         String             @unique
+  customerName String?
+  status       String             @default("active")
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  messages     PharmacyMessage[]
+  orders       PharmacyOrder[]
+}
+
+// Mensagens individuais — armazena content como JSON para preservar tool_use
+model PharmacyMessage {
+  id             String               @id @default(cuid())
+  conversationId String
+  conversation   PharmacyConversation @relation(fields: [conversationId], references: [id])
+  role           String
+  contentJson    String
+  createdAt      DateTime             @default(now())
+
+  @@index([conversationId])
+}
+
+// Pedido gerado na conversa e enviado ao caixa
+model PharmacyOrder {
+  id             String               @id @default(cuid())
+  conversationId String
+  conversation   PharmacyConversation @relation(fields: [conversationId], references: [id])
+  orderNumber    String               @unique
+  status         String               @default("sent_to_cashier")
+  deliveryType   String
+  paymentMethod  String
+  address        String?
+  total          Float
+  notes          String?
+  cashierSentAt  DateTime             @default(now())
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  items          PharmacyOrderItem[]
+
+  @@index([conversationId])
+  @@index([status])
+  @@index([cashierSentAt])
+}
+
+// Itens de um pedido
+model PharmacyOrderItem {
+  id          String          @id @default(cuid())
+  orderId     String
+  order       PharmacyOrder   @relation(fields: [orderId], references: [id])
+  productId   String
+  product     PharmacyProduct @relation(fields: [productId], references: [id])
+  productName String
+  quantity    Int
+  unitPrice   Float
+  discount    Float           @default(0)
+  subtotal    Float
+}
