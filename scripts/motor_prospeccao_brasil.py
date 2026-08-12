@@ -718,7 +718,8 @@ def main():
     log("─── Exportando ───")
     pasta_saida = Path(PASTA_SAIDA) if PASTA_SAIDA else Path(__file__).parent
     pasta_saida.mkdir(parents=True, exist_ok=True)
-    saida = pasta_saida / ARQUIVO_SAIDA
+    nome_saida = f"Prospeccao_GrupoA_Brasil_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    saida = pasta_saida / nome_saida
     exportar_excel(df, str(saida))
 
     # ── Resumo final ──────────────────────────────────────────────────────
