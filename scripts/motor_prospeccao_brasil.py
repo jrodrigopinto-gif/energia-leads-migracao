@@ -25,22 +25,20 @@ FONTES DOS DADOS:
 #  CONFIGURAÇÃO — edite só esta seção
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Pasta raiz onde estão os arquivos de dados
-# Windows: r"C:\Users\SeuNome\Downloads\dados_energia"
-# Mac/Linux: "/home/usuario/dados_energia"
-PASTA_DADOS = r"C:\Users\SeuNome\Downloads\dados_energia"
+# Pasta raiz onde estão os arquivos (deixe "" se usar caminhos completos abaixo)
+PASTA_DADOS = ""
 
-# Nomes dos arquivos (coloque o nome exato — CSV ou Excel, ambos funcionam)
+# Caminhos dos arquivos — use o caminho COMPLETO ou só o nome se PASTA_DADOS estiver preenchido
 # Deixe "" se não tiver o arquivo; o motor roda mesmo sem ele (com menos cruzamentos)
-ARQUIVO_BDGD    = "ucmt.csv"              # BDGD ANEEL — UCMT (média tensão, Grupo A)
-ARQUIVO_BDGD_2  = "ucat.csv"             # UCAT (alta tensão) — opcional, deixe "" se não tiver
-ARQUIVO_CCEE    = "ccee_perfis.csv"       # Lista de perfis CCEE (quem já migrou)
-ARQUIVO_CNPJ    = "estabelecimentos.csv"  # Receita Federal — Estabelecimentos
-ARQUIVO_CNPJ_EMP= "empresas.csv"         # Receita Federal — Empresas (razão social) — opcional
-ARQUIVO_GD      = "gd_aneel.xlsx"        # Geração Distribuída ANEEL — opcional
+ARQUIVO_BDGD    = r"C:\Users\RODRIGO\Desktop\EXCEL\ucmt_pj.csv"
+ARQUIVO_BDGD_2  = ""   # UCAT (alta tensão) — não encontrado
+ARQUIVO_CCEE    = r"C:\Users\RODRIGO\Desktop\EXCEL\lista_perfil_v1_2026.csv"
+ARQUIVO_CNPJ    = ""   # Estabelecimentos RFB — não encontrado
+ARQUIVO_CNPJ_EMP= r"C:\Users\RODRIGO\Desktop\EXCEL\empresas_mapa_final.csv"
+ARQUIVO_GD      = ""   # GD ANEEL — não encontrado
 
-# Pasta onde o resultado será salvo (deixe "" para salvar na mesma pasta do script)
-PASTA_SAIDA = r"C:\Users\SeuNome\Desktop"
+# Pasta onde o resultado será salvo (deixe "" para salvar na Área de Trabalho)
+PASTA_SAIDA = r"C:\Users\RODRIGO\Desktop"
 
 # ── Parâmetros comerciais ─────────────────────────────────────────────────────
 TARIFA_CATIVA        = 0.82     # R$/kWh — tarifa média cativa com impostos
@@ -200,7 +198,8 @@ def carregar_bdgd(arquivo1, arquivo2=""):
     for arq in [arquivo1, arquivo2]:
         if not arq:
             continue
-        caminho = Path(PASTA_DADOS) / arq
+        p = Path(arq)
+        caminho = p if p.is_absolute() else Path(PASTA_DADOS) / arq
         df = ler_arquivo(str(caminho))
         if df is not None:
             frames.append(df)
@@ -280,7 +279,7 @@ def carregar_ccee(arquivo):
     Carrega a lista de perfis CCEE (quem já está no mercado livre).
     Retorna conjunto de CNPJ-raiz (8 dígitos) de consumidores ativos.
     """
-    caminho = Path(PASTA_DADOS) / arquivo
+    _p = Path(arquivo); caminho = _p if _p.is_absolute() else Path(PASTA_DADOS) / arquivo
     df = ler_arquivo(str(caminho))
     if df is None:
         return set()
@@ -313,7 +312,7 @@ def carregar_cnpj(arquivo_estab, arquivo_emp=""):
     Carrega a base da Receita Federal.
     Detecta automaticamente se é o formato raw (sem cabeçalho) ou já processado.
     """
-    caminho = Path(PASTA_DADOS) / arquivo_estab
+    _p = Path(arquivo_estab); caminho = _p if _p.is_absolute() else Path(PASTA_DADOS) / arquivo_estab
     df = ler_arquivo(str(caminho))
     if df is None:
         return None
@@ -347,7 +346,7 @@ def carregar_cnpj(arquivo_estab, arquivo_emp=""):
         df["razao_social"] = ""
         if arquivo_emp:
             log("Carregando razão social do arquivo Empresas...")
-            caminho_emp = Path(PASTA_DADOS) / arquivo_emp
+            _pe = Path(arquivo_emp); caminho_emp = _pe if _pe.is_absolute() else Path(PASTA_DADOS) / arquivo_emp
             df_emp = ler_arquivo(str(caminho_emp))
             if df_emp is not None:
                 colunas_emp = ["cnpj_basico","razao_social","nat_juridica","qualif",
@@ -401,7 +400,7 @@ def carregar_gd(arquivo):
     Carrega lista de quem tem Geração Distribuída (solar etc.) da ANEEL.
     Retorna conjunto de nomes normalizados dos titulares.
     """
-    caminho = Path(PASTA_DADOS) / arquivo
+    _p = Path(arquivo); caminho = _p if _p.is_absolute() else Path(PASTA_DADOS) / arquivo
     df = ler_arquivo(str(caminho))
     if df is None:
         return set()
@@ -684,8 +683,7 @@ def main():
     print("  Motor de Prospecção — Mercado Livre de Energia | Brasil")
     print("=" * 70)
 
-    pasta = Path(PASTA_DADOS)
-    if not pasta.exists():
+    if PASTA_DADOS and not Path(PASTA_DADOS).exists():
         log(f"PASTA_DADOS não encontrada: {PASTA_DADOS}", "ERRO")
         log("Edite a variável PASTA_DADOS no topo do script.", "ERRO")
         sys.exit(1)
