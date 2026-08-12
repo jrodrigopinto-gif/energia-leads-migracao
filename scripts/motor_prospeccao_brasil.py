@@ -189,6 +189,41 @@ def encontrar_coluna(df, candidatos):
 
 # ── Loaders ───────────────────────────────────────────────────────────────────
 
+def _carregar_mapa_ibge():
+    """Retorna dict {codigo_ibge_str: nome_municipio} a partir do CSV local ou GitHub."""
+    import urllib.request, io
+    # Tenta primeiro CSV local (caso o usuário tenha baixado)
+    candidatos_locais = [
+        Path(__file__).parent / "municipios_br.csv",
+        Path.home() / "Downloads" / "municipios_br.csv",
+        Path("municipios_br.csv"),
+    ]
+    for p in candidatos_locais:
+        if p.exists():
+            try:
+                df = pd.read_csv(str(p), dtype=str)
+                return dict(zip(df["codigo_ibge"].str.strip(), df["nome"].str.strip()))
+            except Exception:
+                pass
+    # Tenta baixar do GitHub
+    url = "https://raw.githubusercontent.com/kelvins/municipios-brasileiros/main/csv/municipios.csv"
+    try:
+        with urllib.request.urlopen(url, timeout=10) as r:
+            df = pd.read_csv(io.StringIO(r.read().decode("utf-8")), dtype=str)
+            return dict(zip(df["codigo_ibge"].str.strip(), df["nome"].str.strip()))
+    except Exception:
+        pass
+    # Fallback: mapa com principais capitais e cidades grandes
+    return {
+        "2504009":"Campina Grande","2507507":"João Pessoa","3550308":"São Paulo",
+        "3304557":"Rio de Janeiro","3106200":"Belo Horizonte","4314902":"Porto Alegre",
+        "4106902":"Curitiba","2927408":"Salvador","2304400":"Fortaleza","2611606":"Recife",
+        "1302603":"Manaus","5300108":"Brasília","1501402":"Belém","2111300":"São Luís",
+        "2704302":"Maceió","2800308":"Aracaju","2209100":"Teresina","2408102":"Natal",
+        "3205309":"Vitória","5002704":"Campo Grande","5103403":"Cuiabá","5208707":"Goiânia",
+    }
+
+
 def carregar_bdgd(arquivo1, arquivo2=""):
     """
     Carrega UCMT e/ou UCAT da BDGD ANEEL.
@@ -242,9 +277,24 @@ def carregar_bdgd(arquivo1, arquivo2=""):
     # Limpar e converter
     df["cnae"]    = df["cnae"].apply(limpar_cnae)
     df["cep"]     = df["cep"].apply(limpar_cep)
+
+    # Município: pode vir como código IBGE (7 dígitos) — mapear para nome se possível
+    col_mun_orig = renomear.get("municipio") or encontrar_coluna(df, ["municipio","nom_mun","mun_nome","nome_municipio","mun","cod_municipio","codigo_municipio"])
+    # Detectar se o campo município é código IBGE (numérico de 7 dígitos)
+    mun_sample = df["municipio"].dropna().head(20)
+    eh_codigo_ibge = mun_sample.str.match(r"^\d{7}$").sum() > 10 if len(mun_sample) else False
+    if eh_codigo_ibge:
+        log("Município detectado como código IBGE — mapeando para nomes...")
+        ibge_map = _carregar_mapa_ibge()
+        df["municipio"] = df["municipio"].map(ibge_map).fillna(df["municipio"])
+        log(f"  Municípios mapeados: {df['municipio'].isin(ibge_map.values()).sum():,} de {len(df):,}")
+
     df["municipio"] = df["municipio"].apply(normalizar)
 
     # Consumo: converter para numérico (kWh/mês)
+    # Detectar se o campo mapeado vem de coluna anual (ene_cons_12m, consumo_anual, etc.)
+    col_consumo_orig = next((c for c in renomear if renomear[c] == "consumo"), "")
+    consumo_eh_anual = any(kw in col_consumo_orig.lower() for kw in ("12m", "anual", "ano", "_12"))
     df["consumo_num"] = (
         df["consumo"]
         .str.replace(",", ".", regex=False)
@@ -252,11 +302,15 @@ def carregar_bdgd(arquivo1, arquivo2=""):
         .pipe(pd.to_numeric, errors="coerce")
         .fillna(0)
     )
-    # Se o consumo parece anual (muito alto), converte para mensal
-    med = df["consumo_num"].median()
-    if med > 500_000:
-        log("Consumo parece anual — convertendo para mensal (/12)")
+    if consumo_eh_anual:
+        log(f"Campo '{col_consumo_orig}' detectado como anual — dividindo por 12")
         df["consumo_num"] = df["consumo_num"] / 12
+    else:
+        # Fallback: se mediana > 500k ainda assim parece anual
+        med = df["consumo_num"].median()
+        if med > 500_000:
+            log("Consumo parece anual (mediana alta) — convertendo para mensal (/12)")
+            df["consumo_num"] = df["consumo_num"] / 12
 
     # Filtrar consumo mínimo
     antes = len(df)
