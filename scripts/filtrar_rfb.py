@@ -32,7 +32,7 @@ except ImportError:
 # ──────────────────────────────────────────────────────────────────────────────
 
 # Pasta onde estão os arquivos RFB extraídos (Estabelecimentos*.csv, Empresas*.csv)
-PASTA_RFB = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\RFB"
+PASTA_RFB = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção"
 
 # Arquivo BDGD original com os alvos (ucmt_pj.csv)
 ARQUIVO_BDGD = r"C:\Users\RODRIGO\Desktop\EXCEL\ucmt_pj.csv"
