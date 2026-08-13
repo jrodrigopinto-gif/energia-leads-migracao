@@ -268,6 +268,7 @@ def carregar_bdgd(arquivo1, arquivo2=""):
 
     # Detectar colunas
     mapeamento = {
+        "cnpj":        ["cnpj", "num_cpf_cnpj", "cpf_cnpj", "cpf_cnpj_titular", "cnpj_cpf"],
         "municipio":   ["municipio", "nom_mun", "mun_nome", "nome_municipio", "mun"],
         "cnae":        ["cnae", "cod_cnae", "cnae_principal", "classe_cnae"],
         "subgrupo":    ["subgrupo", "subgru", "sub_grupo", "subgrupo_tensao", "classe"],
@@ -298,6 +299,10 @@ def carregar_bdgd(arquivo1, arquivo2=""):
     # Limpar e converter
     df["cnae"]    = df["cnae"].apply(limpar_cnae)
     df["cep"]     = df["cep"].apply(limpar_cep)
+    if "cnpj" in df.columns:
+        df["cnpj"] = df["cnpj"].apply(limpar_cnpj)
+        n_cnpj = df["cnpj"].str.len().ge(14).sum()
+        log(f"  CNPJ do BDGD: {n_cnpj:,} de {len(df):,} registros com CNPJ")
 
     # Município: pode vir como código IBGE (7 dígitos) — mapear para nome se possível
     col_mun_orig = renomear.get("municipio") or encontrar_coluna(df, ["municipio","nom_mun","mun_nome","nome_municipio","mun","cod_municipio","codigo_municipio"])
@@ -496,20 +501,54 @@ def carregar_gd(arquivo):
 
 def cruzar_bdgd_cnpj(df_bdgd, df_cnpj):
     """
-    Cruza BDGD (Grupo A) com Receita Federal.
-    Tentativa 1: CEP + CNAE (mais preciso)
+    Cruza BDGD (Grupo A) com base de CNPJs.
+    Tentativa 0: CNPJ direto do BDGD (quando BDGD já tem CNPJ — mais preciso)
+    Tentativa 1: CEP + CNAE (fallback)
     Tentativa 2: Município + CNAE (fallback)
-    Tentativa 3: Município + CNAE de alto consumo (último recurso)
     """
+    def _preencher_ausentes(df):
+        for col, default in [("cnpj",""), ("razao_social",""), ("nome_fantasia",""),
+                              ("telefone",""), ("situacao","Ativa")]:
+            if col not in df.columns:
+                df[col] = default
+            else:
+                df[col] = df[col].fillna(default)
+        return df
+
     if df_cnpj is None:
         log("Base RFB não disponível — retornando BDGD sem CNPJ", "AVISO")
-        df_bdgd["cnpj"] = ""
-        df_bdgd["razao_social"] = "Sem CNPJ — cole base RFB"
-        df_bdgd["telefone"] = ""
-        df_bdgd["situacao"] = "Ativa"
+        df_bdgd = _preencher_ausentes(df_bdgd.copy())
+        if not df_bdgd["razao_social"].any():
+            df_bdgd["razao_social"] = "Sem CNPJ — cole base RFB"
         return df_bdgd
 
-    log("Cruzando BDGD com Receita Federal...")
+    # Tentativa 0: CNPJ direto (BDGD contém CNPJ)
+    if "cnpj" in df_bdgd.columns and "cnpj" in df_cnpj.columns:
+        bdgd_com_cnpj = df_bdgd[df_bdgd["cnpj"].str.len() >= 14].copy()
+        if len(bdgd_com_cnpj) > 0:
+            log("Cruzando por CNPJ direto (BDGD já contém CNPJ)...")
+            cols_rfb = [c for c in ["cnpj","razao_social","nome_fantasia","uf",
+                                     "municipio","telefone","situacao","cnae"]
+                        if c in df_cnpj.columns]
+            rfb_dedup = df_cnpj[cols_rfb].drop_duplicates(subset=["cnpj"])
+            resultado = bdgd_com_cnpj.merge(rfb_dedup, on="cnpj", how="left",
+                                            suffixes=("", "_rfb"))
+            for col in ["razao_social","nome_fantasia","telefone","situacao"]:
+                col_rfb = col + "_rfb"
+                if col_rfb in resultado.columns:
+                    resultado[col] = resultado[col_rfb].fillna(resultado.get(col, ""))
+                    resultado.drop(columns=[col_rfb], inplace=True)
+            resultado = _preencher_ausentes(resultado)
+            sem_nome = (resultado["razao_social"] == "").sum()
+            log(f"  CNPJ direto: {len(resultado) - sem_nome:,} com nome | {sem_nome:,} CNPJ não localizado")
+            # Incluir registros do BDGD sem CNPJ (se houver)
+            bdgd_sem_cnpj = df_bdgd[df_bdgd["cnpj"].str.len() < 14].copy()
+            if len(bdgd_sem_cnpj) > 0:
+                bdgd_sem_cnpj = _preencher_ausentes(bdgd_sem_cnpj)
+                resultado = pd.concat([resultado, bdgd_sem_cnpj], ignore_index=True)
+            return resultado
+
+    log("Cruzando BDGD com Receita Federal por CEP/Município+CNAE...")
     total = 0
 
     # Tentativa 1: CEP + CNAE
@@ -772,8 +811,15 @@ def main():
 
     df_bdgd  = carregar_bdgd(ARQUIVO_BDGD, ARQUIVO_BDGD_2)
     ccee_set = carregar_ccee(ARQUIVO_CCEE)         if ARQUIVO_CCEE    else set()
-    df_cnpj  = carregar_cnpj(ARQUIVO_CNPJ,
-                             ARQUIVO_CNPJ_EMP)     if ARQUIVO_CNPJ    else None
+
+    # Tenta carregar CNPJ: primeiro ARQUIVO_CNPJ, depois ARQUIVO_CNPJ_EMP como fallback
+    df_cnpj = None
+    if ARQUIVO_CNPJ:
+        df_cnpj = carregar_cnpj(ARQUIVO_CNPJ, ARQUIVO_CNPJ_EMP)
+    if df_cnpj is None and ARQUIVO_CNPJ_EMP:
+        log("Tentando carregar CNPJ de ARQUIVO_CNPJ_EMP como fonte primária...")
+        df_cnpj = carregar_cnpj(ARQUIVO_CNPJ_EMP)
+
     gd_set   = carregar_gd(ARQUIVO_GD)             if ARQUIVO_GD      else set()
 
     if df_bdgd is None or len(df_bdgd) == 0:
