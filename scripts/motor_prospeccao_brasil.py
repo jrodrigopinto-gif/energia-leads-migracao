@@ -249,16 +249,19 @@ def carregar_bdgd(arquivo1, arquivo2=""):
             if df is not None:
                 df["_fonte"] = arq.stem  # marca de qual distribuidora veio
                 frames.append(df)
-    else:
-        # Modo individual
-        for arq in [arquivo1, arquivo2]:
-            if not arq:
-                continue
-            p = Path(arq)
-            caminho = p if p.is_absolute() else Path(PASTA_DADOS) / arq
-            df = ler_arquivo(str(caminho))
-            if df is not None:
-                frames.append(df)
+
+    # Sempre lê também os arquivos individuais (ucmt_pj.csv nacional etc.)
+    for arq in [arquivo1, arquivo2]:
+        if not arq:
+            continue
+        p = Path(arq)
+        caminho = p if p.is_absolute() else Path(PASTA_DADOS) / arq
+        if not caminho.exists():
+            continue
+        df = ler_arquivo(str(caminho))
+        if df is not None:
+            df["_fonte"] = caminho.stem
+            frames.append(df)
 
     if not frames:
         log("Nenhum arquivo BDGD carregado.", "AVISO")
