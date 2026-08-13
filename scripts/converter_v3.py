@@ -1,6 +1,21 @@
 import pyogrio, pandas as pd
 from pathlib import Path
 
+def ler_camada(gdb, camada):
+    """Lê camada do .gdb sem precisar de geopandas (usa pyarrow)."""
+    try:
+        resultado = pyogrio.read_arrow(str(gdb), layer=camada)
+        # pyogrio pode retornar (meta, table) ou só table dependendo da versão
+        if isinstance(resultado, tuple):
+            _, table = resultado
+        else:
+            table = resultado
+        df = table.to_pandas()
+    except Exception:
+        # fallback: precisa de geopandas
+        df = pyogrio.read_dataframe(str(gdb), layer=camada)
+    return df
+
 PASTA = Path(r"C:\Users\RODRIGO\Desktop\Motor de Prospecção")
 SAIDA = PASTA / "BDGD_Nacional"
 SAIDA.mkdir(parents=True, exist_ok=True)
@@ -34,7 +49,7 @@ for gdb in gdbs:
                     achou = True
                     continue
                 print(f"  [>] Extraindo {alvo}...")
-                df = pyogrio.read_dataframe(str(gdb), layer=alvo)
+                df = ler_camada(gdb, alvo)
                 if "geometry" in df.columns:
                     df = df.drop(columns=["geometry"])
                 df.to_csv(str(dest), index=False, encoding="utf-8")
