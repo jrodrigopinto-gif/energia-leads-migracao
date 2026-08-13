@@ -562,48 +562,53 @@ def cruzar_bdgd_cnpj(df_bdgd, df_cnpj):
                 resultado = pd.concat([resultado, bdgd_sem_cnpj], ignore_index=True)
             return resultado
 
-    log("Cruzando BDGD com Receita Federal por CEP/Município+CNAE...")
+    log("Cruzando BDGD com Receita Federal por CEP / CNAE+UF...")
     log(f"  Colunas df_cnpj: {list(df_cnpj.columns)}")
     total = 0
 
-    COLS_RFB = ["cnpj","razao_social","nome_fantasia","cnae","cep","uf","telefone","situacao","municipio"]
+    # Colunas de enriquecimento: somente as que existem na RFB e não conflitam com BDGD,
+    # exceto cnpj que é desejável trazer da RFB quando BDGD não tem.
+    COLS_ENRICH_BASE = ["cnpj","razao_social","nome_fantasia","telefone","situacao"]
+    # Remove colunas que já existem no BDGD para evitar conflito (exceto cnpj — queremos o da RFB)
+    COLS_ENRICH = [c for c in COLS_ENRICH_BASE if c in df_cnpj.columns
+                   and (c == "cnpj" or c not in df_bdgd.columns)]
+    if not COLS_ENRICH:
+        COLS_ENRICH = [c for c in COLS_ENRICH_BASE if c in df_cnpj.columns]
 
-    # Tentativa 1: CEP + CNAE
+    # Tentativa 1: CEP (endereço físico do medidor bate com sede da empresa)
     t1 = pd.DataFrame()
     ceps_com_match = set()
-    if "cep" in df_cnpj.columns and "cnae" in df_cnpj.columns:
-        cols_t1 = [c for c in COLS_RFB if c in df_cnpj.columns]
-        rename_t1 = {c: c+"_rfb" for c in ["municipio"] if c in cols_t1}
-        t1 = df_bdgd.merge(
-            df_cnpj[cols_t1].rename(columns=rename_t1),
-            on=["cep","cnae"], how="inner"
+    if "cep" in df_cnpj.columns and "cep" in df_bdgd.columns:
+        rfb_t1 = df_cnpj[["cep"] + COLS_ENRICH].drop_duplicates(
+            subset=["cep","cnpj"] if "cnpj" in COLS_ENRICH else ["cep"]
         )
+        t1 = df_bdgd.merge(rfb_t1, on="cep", how="inner", suffixes=("_bdgd",""))
+        # Se existia cnpj_bdgd (BDGD já tinha CNPJ), prefere o da RFB
+        if "cnpj_bdgd" in t1.columns:
+            t1.drop(columns=["cnpj_bdgd"], inplace=True)
         total += len(t1)
-        log(f"  Cruzamento CEP+CNAE: {len(t1):,} matches")
+        log(f"  Cruzamento CEP: {len(t1):,} matches")
         ceps_com_match = set(t1["cep"].unique()) if "cep" in t1.columns else set()
     else:
-        log("  Cruzamento CEP+CNAE: pulado (base RFB sem coluna cep ou cnae)", "AVISO")
+        log("  Cruzamento CEP: pulado (base RFB sem coluna cep)", "AVISO")
 
-    # Tentativa 2: Município + CNAE (para quem não bateu por CEP)
+    # Tentativa 2: CNAE + UF (setor + estado, sem depender de endereço exato)
     bdgd_restante = df_bdgd[~df_bdgd["cep"].isin(ceps_com_match)].copy() if "cep" in df_bdgd.columns else df_bdgd.copy()
 
     t2 = pd.DataFrame()
-    if len(bdgd_restante) > 0 and "municipio" in df_cnpj.columns and "cnae" in df_cnpj.columns:
-        cols_t2 = [c for c in COLS_RFB if c in df_cnpj.columns]
-        rename_t2 = {}
-        if "municipio" in cols_t2:
-            rename_t2["municipio"] = "municipio_rfb"
-        if "cep" in cols_t2:
-            rename_t2["cep"] = "cep_rfb"
-        right_on_mun = "municipio_rfb" if "municipio" in rename_t2 else "municipio"
-        t2 = bdgd_restante.merge(
-            df_cnpj[cols_t2].rename(columns=rename_t2),
-            left_on=["municipio","cnae"], right_on=[right_on_mun,"cnae"], how="inner"
+    if (len(bdgd_restante) > 0
+            and "cnae" in df_cnpj.columns and "uf" in df_cnpj.columns
+            and "cnae" in df_bdgd.columns and "uf" in df_bdgd.columns):
+        rfb_t2 = df_cnpj[["cnae","uf"] + COLS_ENRICH].drop_duplicates(
+            subset=["cnae","uf","cnpj"] if "cnpj" in COLS_ENRICH else ["cnae","uf"]
         )
+        t2 = bdgd_restante.merge(rfb_t2, on=["cnae","uf"], how="inner", suffixes=("_bdgd",""))
+        if "cnpj_bdgd" in t2.columns:
+            t2.drop(columns=["cnpj_bdgd"], inplace=True)
         total += len(t2)
-        log(f"  Cruzamento Município+CNAE: {len(t2):,} matches adicionais")
-    elif "municipio" not in df_cnpj.columns:
-        log("  Cruzamento Município+CNAE: pulado (base RFB sem coluna municipio)", "AVISO")
+        log(f"  Cruzamento CNAE+UF: {len(t2):,} matches adicionais")
+    elif "cnae" not in df_cnpj.columns or "uf" not in df_cnpj.columns:
+        log("  Cruzamento CNAE+UF: pulado (base RFB sem coluna cnae ou uf)", "AVISO")
 
     partes = [df for df in [t1, t2] if len(df) > 0]
     resultado = pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
