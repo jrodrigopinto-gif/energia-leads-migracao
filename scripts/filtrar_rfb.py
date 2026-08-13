@@ -128,14 +128,46 @@ def _carregar_bdgd_ceps_cnaes():
     return ceps, cnaes
 
 
+def _encontrar_arqs_rfb(pasta, palavra_chave):
+    """Procura arquivos RFB com vários padrões de nome, incluindo subpastas."""
+    pasta = Path(pasta)
+    padroes = [
+        f"{palavra_chave}*.csv",
+        f"{palavra_chave}*.CSV",
+        f"*{palavra_chave}*.csv",
+        f"*{palavra_chave}*.CSV",
+        # formato antigo da RFB (ex: K3241.K03200Y24.D40412.ESTABELE)
+        f"*.ESTABE*" if "ESTAB" in palavra_chave.upper() else f"*.EMP*",
+    ]
+    encontrados = []
+    # Busca direta na pasta
+    for p in padroes:
+        encontrados += list(pasta.glob(p))
+    # Busca recursiva em subpastas
+    if not encontrados:
+        for p in padroes:
+            encontrados += list(pasta.rglob(p))
+    # Remove duplicatas e ordena
+    encontrados = sorted(set(encontrados))
+
+    if not encontrados:
+        # Mostra o que tem na pasta para ajudar o diagnóstico
+        todos_csv = list(pasta.rglob("*.csv")) + list(pasta.rglob("*.CSV"))
+        print(f"\n  Arquivos CSV encontrados em {pasta}:")
+        for f in sorted(todos_csv)[:30]:
+            print(f"    {f.relative_to(pasta)}")
+        if not todos_csv:
+            print("    (nenhum arquivo .csv encontrado)")
+
+    return encontrados
+
+
 def _filtrar_estabelecimentos(ceps_alvo, cnaes_alvo):
-    """Lê Estabelecimentos*.csv em chunks e retorna só os que batem com ceps/cnaes."""
-    pasta = Path(PASTA_RFB)
-    arqs = sorted(pasta.glob("Estabelecimentos*.csv"))
+    """Lê arquivos de Estabelecimentos RFB em chunks e retorna só os que batem com ceps/cnaes."""
+    arqs = _encontrar_arqs_rfb(PASTA_RFB, "Estabelecimento")
     if not arqs:
-        arqs = sorted(pasta.glob("Estabelecimento*.csv"))
-    if not arqs:
-        print(f"ERRO: nenhum arquivo Estabelecimentos*.csv encontrado em {PASTA_RFB}")
+        print(f"\nERRO: nenhum arquivo de Estabelecimentos encontrado em {PASTA_RFB}")
+        print("Verifique se os arquivos foram extraídos do zip e se PASTA_RFB está correto.")
         sys.exit(1)
 
     print(f"\nFiltrando {len(arqs)} arquivo(s) de Estabelecimentos...")
@@ -181,8 +213,7 @@ def _filtrar_estabelecimentos(ceps_alvo, cnaes_alvo):
 
 def _juntar_razao_social(df_estab):
     """Lê Empresas*.csv em chunks e adiciona razao_social ao df_estab."""
-    pasta = Path(PASTA_RFB)
-    arqs = sorted(pasta.glob("Empresa*.csv"))
+    arqs = _encontrar_arqs_rfb(PASTA_RFB, "Empresa")
     if not arqs:
         print("Arquivo Empresa*.csv não encontrado — razao_social ficará em branco.")
         df_estab["razao_social"] = ""
