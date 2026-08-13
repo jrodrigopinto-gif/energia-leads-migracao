@@ -505,145 +505,169 @@ def carregar_gd(arquivo):
 
 def cruzar_bdgd_cnpj(df_bdgd, df_cnpj):
     """
-    Cruza BDGD (Grupo A) com base de CNPJs.
-    Tentativa 0: CNPJ direto do BDGD (quando BDGD já tem CNPJ — mais preciso)
-    Tentativa 1: CEP + CNAE (fallback)
-    Tentativa 2: Município + CNAE (fallback)
+    Cruza BDGD (Grupo A) com base RFB — 1 empresa por medidor BDGD.
+
+    Prioridade:
+      0 — CNPJ direto quando BDGD já contém CNPJ
+      1 — CEP: melhor match CNAE, 1 empresa por medidor, filtra eleitorais
+      2 — CNAE + UF: para medidores sem match por CEP
+      sem match — mantém o medidor sem enriquecimento (linha não é descartada)
     """
+    # Palavras-chave de entidades que NÃO são consumidores comerciais
+    _EXCLUIR_RE = (
+        r"ELEIC[AÃ]O|ELEICOES|CANDIDAT[OA]\b|VEREADOR\b|DEPUTAD[OA]\b"
+        r"|SENADOR\b|PREFEITO\b|GOVERNADOR\b|PARTIDO\s+POL"
+        r"|COMITE\s+FINANC|DIRET[OÓ]RIO\s+MUNICIPAL"
+    )
+
     def _preencher_ausentes(df):
         for col, default in [("cnpj",""), ("razao_social",""), ("nome_fantasia",""),
-                              ("telefone",""), ("situacao","Ativa")]:
+                              ("telefone",""), ("situacao","Ativa"), ("uf","")]:
             if col not in df.columns:
                 df[col] = default
             else:
                 df[col] = df[col].fillna(default)
         return df
 
+    def _remover_nao_comerciais(df):
+        if "razao_social" not in df.columns:
+            return df
+        mask = df["razao_social"].str.upper().str.contains(_EXCLUIR_RE, na=False, regex=True)
+        n = mask.sum()
+        if n:
+            log(f"    Removidas {n:,} entidades não-comerciais (eleitorais/políticas)")
+        return df[~mask].copy()
+
+    def _dedup_por_medidor(df, id_col="_mid"):
+        """Mantém o melhor match (maior _score) por medidor único."""
+        if "_score" in df.columns:
+            df = df.sort_values("_score", ascending=False)
+        return df.drop_duplicates(subset=[id_col], keep="first")
+
     if df_cnpj is None:
         log("Base RFB não disponível — retornando BDGD sem CNPJ", "AVISO")
-        df_bdgd = _preencher_ausentes(df_bdgd.copy())
-        if not df_bdgd["razao_social"].any():
-            df_bdgd["razao_social"] = "Sem CNPJ — cole base RFB"
-        return df_bdgd
+        return _preencher_ausentes(df_bdgd.copy())
 
     # Tentativa 0: CNPJ direto (BDGD contém CNPJ)
     tem_cnpj_bdgd = "cnpj" in df_bdgd.columns
     tem_cnpj_rfb  = "cnpj" in df_cnpj.columns
     if not tem_cnpj_bdgd:
-        cols_cpf_like = [c for c in df_bdgd.columns if "cpf" in c.lower() or "cnpj" in c.lower() or "doc" in c.lower()]
-        log(f"Tentativa 0: pulada — BDGD não tem coluna CNPJ mapeada", "AVISO")
-        log(f"  Colunas BDGD com CPF/CNPJ/doc: {cols_cpf_like or '(nenhuma encontrada)'}", "AVISO")
-        log(f"  Todas as colunas BDGD: {list(df_bdgd.columns)}", "AVISO")
+        cols_cpf_like = [c for c in df_bdgd.columns
+                         if "cpf" in c.lower() or "cnpj" in c.lower() or "doc" in c.lower()]
+        log("Tentativa 0: pulada — BDGD não tem coluna CNPJ mapeada", "AVISO")
+        log(f"  Colunas BDGD com CPF/CNPJ/doc: {cols_cpf_like or '(nenhuma)'}", "AVISO")
     elif not tem_cnpj_rfb:
         log("Tentativa 0: pulada — base RFB não tem coluna CNPJ", "AVISO")
     if tem_cnpj_bdgd and tem_cnpj_rfb:
         bdgd_com_cnpj = df_bdgd[df_bdgd["cnpj"].str.len() >= 14].copy()
         log(f"Tentativa 0: {len(bdgd_com_cnpj):,} registros BDGD com CNPJ (de {len(df_bdgd):,})")
         if len(bdgd_com_cnpj) > 0:
-            log("Cruzando por CNPJ direto (BDGD já contém CNPJ)...")
+            log("Cruzando por CNPJ direto...")
             cols_rfb = [c for c in ["cnpj","razao_social","nome_fantasia","uf",
                                      "municipio","telefone","situacao","cnae"]
                         if c in df_cnpj.columns]
             rfb_dedup = df_cnpj[cols_rfb].drop_duplicates(subset=["cnpj"])
-            resultado = bdgd_com_cnpj.merge(rfb_dedup, on="cnpj", how="left",
-                                            suffixes=("", "_rfb"))
+            resultado = bdgd_com_cnpj.merge(rfb_dedup, on="cnpj", how="left", suffixes=("","_rfb"))
             for col in ["razao_social","nome_fantasia","telefone","situacao"]:
                 col_rfb = col + "_rfb"
                 if col_rfb in resultado.columns:
-                    resultado[col] = resultado[col_rfb].fillna(resultado.get(col, ""))
+                    resultado[col] = resultado[col_rfb].fillna(resultado.get(col,""))
                     resultado.drop(columns=[col_rfb], inplace=True)
             resultado = _preencher_ausentes(resultado)
             sem_nome = (resultado["razao_social"] == "").sum()
-            log(f"  CNPJ direto: {len(resultado) - sem_nome:,} com nome | {sem_nome:,} CNPJ não localizado")
-            # Incluir registros do BDGD sem CNPJ (se houver)
+            log(f"  CNPJ direto: {len(resultado)-sem_nome:,} com nome | {sem_nome:,} não localizado")
             bdgd_sem_cnpj = df_bdgd[df_bdgd["cnpj"].str.len() < 14].copy()
             if len(bdgd_sem_cnpj) > 0:
                 bdgd_sem_cnpj = _preencher_ausentes(bdgd_sem_cnpj)
                 resultado = pd.concat([resultado, bdgd_sem_cnpj], ignore_index=True)
             return resultado
 
-    log("Cruzando BDGD com Receita Federal por CEP / CNAE+UF...")
+    # ── Join por CEP / CNAE+UF ───────────────────────────────────────────────
+    log("Cruzando BDGD × RFB: CEP (best-match) → CNAE+UF → sem enriquecimento")
     log(f"  Colunas df_cnpj: {list(df_cnpj.columns)}")
-    total = 0
 
-    # Colunas de enriquecimento: somente as que existem na RFB e não conflitam com BDGD,
-    # exceto cnpj que é desejável trazer da RFB quando BDGD não tem.
-    COLS_ENRICH_BASE = ["cnpj","razao_social","nome_fantasia","telefone","situacao"]
-    # Remove colunas que já existem no BDGD para evitar conflito (exceto cnpj — queremos o da RFB)
-    COLS_ENRICH = [c for c in COLS_ENRICH_BASE if c in df_cnpj.columns
-                   and (c == "cnpj" or c not in df_bdgd.columns)]
-    if not COLS_ENRICH:
-        COLS_ENRICH = [c for c in COLS_ENRICH_BASE if c in df_cnpj.columns]
+    # Marcador único por medidor BDGD (evita perder linhas sem match)
+    df_bdgd = df_bdgd.copy()
+    df_bdgd["_mid"] = range(len(df_bdgd))
 
-    # Tentativa 1: CEP (endereço físico do medidor bate com sede da empresa)
+    # Colunas de enriquecimento que vêm da RFB (não conflitam com BDGD)
+    ENRICH = [c for c in ["cnpj","razao_social","nome_fantasia","telefone","situacao","uf"]
+              if c in df_cnpj.columns]
+
     t1 = pd.DataFrame()
-    ceps_com_match = set()
+    matched_mids: set = set()
+
+    # ── Tentativa 1: CEP ────────────────────────────────────────────────────
     if "cep" in df_cnpj.columns and "cep" in df_bdgd.columns:
-        rfb_t1 = df_cnpj[["cep"] + COLS_ENRICH].drop_duplicates(
-            subset=["cep","cnpj"] if "cnpj" in COLS_ENRICH else ["cep"]
-        )
-        t1 = df_bdgd.merge(rfb_t1, on="cep", how="inner", suffixes=("_bdgd",""))
-        # Se existia cnpj_bdgd (BDGD já tinha CNPJ), prefere o da RFB
-        if "cnpj_bdgd" in t1.columns:
-            t1.drop(columns=["cnpj_bdgd"], inplace=True)
-        total += len(t1)
-        log(f"  Cruzamento CEP: {len(t1):,} matches")
-        ceps_com_match = set(t1["cep"].unique()) if "cep" in t1.columns else set()
+        # Trazer cnae da RFB para scoring (renomeado para não colidir com cnae do BDGD)
+        rfb1_extra = ["cnae"] if "cnae" in df_cnpj.columns else []
+        rfb1 = (df_cnpj[["cep"] + ENRICH + rfb1_extra]
+                .drop_duplicates(subset=["cep","cnpj"] if "cnpj" in df_cnpj.columns else ["cep"])
+                .rename(columns={"cnae": "_cnae_rfb"}))
+
+        t1_all = df_bdgd.merge(rfb1, on="cep", how="inner")
+
+        # Filtrar entidades eleitorais/políticas
+        t1_all = _remover_nao_comerciais(t1_all)
+
+        # Pontuar: match exato CNAE (3pts) > match 4 dígitos (2pts) > tem telefone (1pt)
+        if "_cnae_rfb" in t1_all.columns and "cnae" in t1_all.columns:
+            t1_all["_score"] = (
+                (t1_all["cnae"] == t1_all["_cnae_rfb"]).astype(int) * 3 +
+                (t1_all["cnae"].str[:4] == t1_all["_cnae_rfb"].str[:4]).astype(int) * 2
+            )
+        else:
+            t1_all["_score"] = 0
+        if "telefone" in t1_all.columns:
+            t1_all["_score"] += t1_all["telefone"].ne("").astype(int)
+
+        # 1 empresa por medidor (melhor score)
+        t1 = _dedup_por_medidor(t1_all)
+        t1 = t1.drop(columns=[c for c in ["_cnae_rfb","_score"] if c in t1.columns])
+
+        matched_mids = set(t1["_mid"].unique())
+        log(f"  Cruzamento CEP: {len(t1_all):,} candidatos → {len(t1):,} medidores com empresa")
     else:
         log("  Cruzamento CEP: pulado (base RFB sem coluna cep)", "AVISO")
 
-    # Tentativa 2: CNAE + UF (setor + estado, sem depender de endereço exato)
-    bdgd_restante = df_bdgd[~df_bdgd["cep"].isin(ceps_com_match)].copy() if "cep" in df_bdgd.columns else df_bdgd.copy()
-
+    # ── Tentativa 2: CNAE + UF (medidores sem match por CEP) ────────────────
+    bdgd_restante = df_bdgd[~df_bdgd["_mid"].isin(matched_mids)].copy()
     t2 = pd.DataFrame()
+
     if (len(bdgd_restante) > 0
             and "cnae" in df_cnpj.columns and "uf" in df_cnpj.columns
             and "cnae" in df_bdgd.columns and "uf" in df_bdgd.columns):
-        rfb_t2 = df_cnpj[["cnae","uf"] + COLS_ENRICH].drop_duplicates(
-            subset=["cnae","uf","cnpj"] if "cnpj" in COLS_ENRICH else ["cnae","uf"]
-        )
-        t2 = bdgd_restante.merge(rfb_t2, on=["cnae","uf"], how="inner", suffixes=("_bdgd",""))
-        if "cnpj_bdgd" in t2.columns:
-            t2.drop(columns=["cnpj_bdgd"], inplace=True)
-        total += len(t2)
+        rfb2 = (df_cnpj[["cnae","uf"] + [c for c in ENRICH if c != "uf"]]
+                .drop_duplicates(subset=["cnae","uf","cnpj"] if "cnpj" in df_cnpj.columns else ["cnae","uf"]))
+        t2_all = bdgd_restante.merge(rfb2, on=["cnae","uf"], how="inner")
+        t2_all = _remover_nao_comerciais(t2_all)
+        t2_all["_score"] = (t2_all["telefone"].ne("").astype(int)
+                            if "telefone" in t2_all.columns else 0)
+        t2 = _dedup_por_medidor(t2_all)
+        t2 = t2.drop(columns=["_score"], errors="ignore")
+        matched_mids.update(t2["_mid"].unique())
         log(f"  Cruzamento CNAE+UF: {len(t2):,} matches adicionais")
-    elif "cnae" not in df_cnpj.columns or "uf" not in df_cnpj.columns:
-        log("  Cruzamento CNAE+UF: pulado (base RFB sem coluna cnae ou uf)", "AVISO")
+    elif len(bdgd_restante) > 0:
+        log(f"  Cruzamento CNAE+UF: pulado (BDGD sem coluna UF ou RFB sem cnae/uf)", "AVISO")
 
-    partes = [df for df in [t1, t2] if len(df) > 0]
-    resultado = pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
+    # ── Medidores sem match: mantidos sem enriquecimento ────────────────────
+    bdgd_sem_match = df_bdgd[~df_bdgd["_mid"].isin(matched_mids)].copy()
+    bdgd_sem_match = _preencher_ausentes(bdgd_sem_match)
+    if len(bdgd_sem_match) > 0:
+        log(f"  Sem empresa identificada: {len(bdgd_sem_match):,} medidores (mantidos sem enriquecimento)")
 
-    if len(resultado) == 0:
-        log("Nenhum cruzamento CEP/Município+CNAE — tentando CNPJ direto como fallback...", "AVISO")
-        # Fallback final: tentar cruzar por CNPJ mesmo sem mapeamento prévio no BDGD
-        # Procura qualquer coluna do BDGD que contenha "cnpj" ou "cpf" no nome
-        col_cnpj_bdgd = next(
-            (c for c in df_bdgd.columns if "cnpj" in c.lower() or ("cpf" in c.lower() and "cnpj" in c.lower())),
-            None
-        )
-        if col_cnpj_bdgd and "cnpj" in df_cnpj.columns:
-            log(f"  Coluna CNPJ no BDGD encontrada diretamente: '{col_cnpj_bdgd}'")
-            df_bdgd_fb = df_bdgd.copy()
-            df_bdgd_fb["cnpj_join"] = df_bdgd_fb[col_cnpj_bdgd].apply(limpar_cnpj)
-            df_cnpj_fb = df_cnpj.copy()
-            df_cnpj_fb["cnpj_join"] = df_cnpj_fb["cnpj"].apply(limpar_cnpj)
-            cols_rfb_fb = [c for c in ["razao_social","nome_fantasia","municipio","uf",
-                                        "telefone","situacao","cnae","cep"]
-                           if c in df_cnpj_fb.columns]
-            resultado = df_bdgd_fb.merge(
-                df_cnpj_fb[["cnpj_join"] + cols_rfb_fb].drop_duplicates("cnpj_join"),
-                on="cnpj_join", how="left", suffixes=("", "_rfb")
-            ).drop(columns=["cnpj_join"])
-            n_match = resultado["razao_social"].notna().sum() if "razao_social" in resultado.columns else 0
-            log(f"  Fallback CNPJ direto: {n_match:,} registros com Razão Social")
-        if len(resultado) == 0:
-            log("Nenhum cruzamento BDGD×RFB — retornando todos os alvos sem enriquecimento", "AVISO")
-            df_bdgd = _preencher_ausentes(df_bdgd.copy())
-            if not df_bdgd["razao_social"].any():
-                df_bdgd["razao_social"] = "Sem CNPJ — cole base RFB"
-            return df_bdgd
+    # ── Consolidar ──────────────────────────────────────────────────────────
+    partes = [df for df in [t1, t2, bdgd_sem_match] if len(df) > 0]
+    if not partes:
+        df_bdgd.drop(columns=["_mid"], inplace=True, errors="ignore")
+        return _preencher_ausentes(df_bdgd)
 
-    log(f"  Total cruzado: {len(resultado):,} alvos potenciais")
+    resultado = pd.concat(partes, ignore_index=True)
+    resultado.drop(columns=["_mid"], inplace=True, errors="ignore")
+    resultado = _preencher_ausentes(resultado)
+
+    n_com_nome = (resultado.get("razao_social","") != "").sum()
+    log(f"  Total: {len(resultado):,} alvos | {n_com_nome:,} com Razão Social")
     return resultado
 
 def aplicar_exclusoes(df, cnpjs_ccee, nomes_gd):
@@ -714,6 +738,14 @@ def exportar_excel(df, caminho_saida):
     # Adicionar colunas que existirem
     df["cnae_descricao"] = df["cnae"].map(CNAE_DESCRICAO).fillna("Outros")
     df["status_contato"] = ""
+
+    # Formatar CNPJ como XX.XXX.XXX/XXXX-XX para preservar zeros à esquerda no Excel
+    def _formatar_cnpj(v):
+        v = str(v).strip().replace(".", "").replace("/", "").replace("-", "")
+        if len(v) == 14 and v.isdigit():
+            return f"{v[:2]}.{v[2:5]}.{v[5:8]}/{v[8:12]}-{v[12:]}"
+        return v
+    df["cnpj"] = df["cnpj"].apply(_formatar_cnpj)
 
     for col in colunas_saida:
         if col not in df.columns:
