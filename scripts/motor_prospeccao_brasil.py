@@ -28,8 +28,12 @@ FONTES DOS DADOS:
 # Pasta raiz onde estão os arquivos (deixe "" se usar caminhos completos abaixo)
 PASTA_DADOS = ""
 
-# Caminhos dos arquivos — use o caminho COMPLETO ou só o nome se PASTA_DADOS estiver preenchido
-# Deixe "" se não tiver o arquivo; o motor roda mesmo sem ele (com menos cruzamentos)
+# ── BDGD Nacional: informe a PASTA com todos os arquivos UCMT baixados ────────
+# O motor lê TODOS os CSV/Excel da pasta automaticamente e empilha os dados.
+# Deixe "" para usar os arquivos individuais ARQUIVO_BDGD / ARQUIVO_BDGD_2 abaixo.
+PASTA_BDGD = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\BDGD_Nacional"
+
+# Caminhos individuais — usados apenas se PASTA_BDGD estiver vazio
 ARQUIVO_BDGD    = r"C:\Users\RODRIGO\Desktop\EXCEL\ucmt_pj.csv"
 ARQUIVO_BDGD_2  = ""   # UCAT (alta tensão) — opcional
 ARQUIVO_CCEE    = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\files (1)\lista_perfil_v1_2026.csv"
@@ -227,17 +231,34 @@ def _carregar_mapa_ibge():
 def carregar_bdgd(arquivo1, arquivo2=""):
     """
     Carrega UCMT e/ou UCAT da BDGD ANEEL.
-    Colunas esperadas (nomes podem variar): municipio, cnae, subgrupo, consumo, demanda, cep, distribuidora
+    Se PASTA_BDGD estiver configurado, lê todos os CSV/Excel da pasta.
+    Caso contrário usa arquivo1 e arquivo2 individualmente.
     """
     frames = []
-    for arq in [arquivo1, arquivo2]:
-        if not arq:
-            continue
-        p = Path(arq)
-        caminho = p if p.is_absolute() else Path(PASTA_DADOS) / arq
-        df = ler_arquivo(str(caminho))
-        if df is not None:
-            frames.append(df)
+
+    # Modo pasta: lê todos os arquivos UCMT da pasta nacional
+    if PASTA_BDGD and Path(PASTA_BDGD).exists():
+        ext_validas = {".csv", ".xlsx", ".xls", ".txt"}
+        arquivos_pasta = sorted(
+            p for p in Path(PASTA_BDGD).rglob("*")
+            if p.suffix.lower() in ext_validas and p.is_file()
+        )
+        log(f"PASTA_BDGD: {len(arquivos_pasta)} arquivo(s) encontrado(s) em {PASTA_BDGD}")
+        for arq in arquivos_pasta:
+            df = ler_arquivo(str(arq))
+            if df is not None:
+                df["_fonte"] = arq.stem  # marca de qual distribuidora veio
+                frames.append(df)
+    else:
+        # Modo individual
+        for arq in [arquivo1, arquivo2]:
+            if not arq:
+                continue
+            p = Path(arq)
+            caminho = p if p.is_absolute() else Path(PASTA_DADOS) / arq
+            df = ler_arquivo(str(caminho))
+            if df is not None:
+                frames.append(df)
 
     if not frames:
         log("Nenhum arquivo BDGD carregado.", "AVISO")
@@ -741,6 +762,10 @@ def main():
         log(f"PASTA_DADOS não encontrada: {PASTA_DADOS}", "ERRO")
         log("Edite a variável PASTA_DADOS no topo do script.", "ERRO")
         sys.exit(1)
+
+    if PASTA_BDGD and not Path(PASTA_BDGD).exists():
+        log(f"PASTA_BDGD não encontrada: {PASTA_BDGD}", "AVISO")
+        log("Usando arquivos ARQUIVO_BDGD / ARQUIVO_BDGD_2 individuais.", "AVISO")
 
     # ── Carregar dados ────────────────────────────────────────────────────
     log("─── Carregando arquivos ───")
