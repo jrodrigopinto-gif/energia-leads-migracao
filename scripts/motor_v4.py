@@ -37,7 +37,7 @@ PASTA_BDGD = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\BDGD_Nacional"
 ARQUIVO_BDGD    = r"C:\Users\RODRIGO\Desktop\EXCEL\ucmt_pj.csv"
 ARQUIVO_BDGD_2  = ""   # UCAT (alta tensão) — opcional
 ARQUIVO_CCEE    = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\files (1)\lista_perfil_v1_2026.csv"
-ARQUIVO_CNPJ    = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\Automacoes\CONSULTA CNPJ\enderecos_cnpj.csv"
+ARQUIVO_CNPJ    = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\rfb_filtrado.csv"
 ARQUIVO_CNPJ_EMP= r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\Automacoes\CNPJs_Enderecos.xlsx"
 ARQUIVO_GD      = ""   # GD ANEEL — opcional
 
