@@ -5,9 +5,17 @@ PASTA = Path(r"C:\Users\RODRIGO\Desktop\Motor de Prospecção")
 SAIDA = PASTA / "BDGD_Nacional"
 SAIDA.mkdir(parents=True, exist_ok=True)
 
-ALVOS = ["UCMT", "UCAT", "ucmt", "ucat", "UC_MT", "UC_AT", "UCMT_PJ", "UCAT_PJ"]
+ALVOS = [
+    "UCMT", "UCAT", "ucmt", "ucat",
+    "UC_MT", "UC_AT", "uc_mt", "uc_at",
+    "UCMT_tab", "UCAT_tab", "ucmt_tab", "ucat_tab",
+    "UCMT_PJ", "UCAT_PJ", "ucmt_pj", "ucat_pj",
+    "UCMT_PJ_tab", "UCAT_PJ_tab",
+]
 
-gdbs = sorted(p for p in PASTA.rglob("*.gdb") if p.is_dir())
+# Deduplica caminhos para evitar processar o mesmo .gdb duas vezes
+_todos = (p.resolve() for p in PASTA.rglob("*.gdb") if p.is_dir())
+gdbs = sorted(set(_todos))
 print(f"\n{len(gdbs)} arquivo(s) .gdb encontrado(s)\n")
 
 total = 0
