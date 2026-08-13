@@ -2,6 +2,10 @@
 """
 filtrar_rfb2.py — Pré-filtra a base da Receita Federal pelos CEPs/CNAEs dos alvos BDGD.
 Varredura COMPLETA: percorre todas as subpastas procurando arquivos de Estabelecimentos e Empresas.
+
+USO:
+    python filtrar_rfb2.py                          # usa PASTA_RAIZ padrão abaixo
+    python filtrar_rfb2.py "C:\\outra\\pasta\\rfb"  # pasta da RFB como argumento
 """
 
 import re, sys
@@ -17,7 +21,8 @@ except ImportError:
 #  CONFIGURAÇÃO
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Pasta raiz onde estão TODOS os arquivos (o script varre subpastas automaticamente)
+# Pasta raiz onde estão TODOS os arquivos RFB (Estabelecimentos, Empresas).
+# Pode ser sobrescrita via argumento: python filtrar_rfb2.py "C:\caminho\rfb"
 PASTA_RAIZ = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção"
 
 # Arquivo BDGD com os alvos
@@ -28,6 +33,11 @@ SAIDA = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\rfb_filtrado.csv"
 
 # Consumo mínimo (kWh/mês)
 CONSUMO_MINIMO = 15_000
+
+# Sobrescreve PASTA_RAIZ se passado como argumento
+if len(sys.argv) > 1:
+    PASTA_RAIZ = sys.argv[1]
+    print(f"[INFO] Pasta RFB via argumento: {PASTA_RAIZ}")
 
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -135,10 +145,17 @@ def _filtrar_estabelecimentos(ceps_alvo, cnaes_alvo):
     arqs = _encontrar_csvs(PASTA_RAIZ, "Estabelecimento")
 
     if not arqs:
-        print(f"\nNão encontrei arquivos de Estabelecimentos em '{PASTA_RAIZ}'.")
-        print("Arquivos CSV existentes na pasta:")
-        for p in sorted(Path(PASTA_RAIZ).rglob("*.csv"))[:40]:
-            print(f"  {p.relative_to(PASTA_RAIZ)}")
+        print(f"\n{'='*60}")
+        print(f"ERRO: arquivos de Estabelecimentos NÃO encontrados em:")
+        print(f"  {PASTA_RAIZ}")
+        print(f"\nOs arquivos da Receita Federal têm nomes como:")
+        print(f"  Estabelecimentos0.csv ... Estabelecimentos9.csv")
+        print(f"  (ou em subpastas com 'Estabelecimento' no caminho)")
+        print(f"\nSe os arquivos RFB estão em OUTRA pasta, rode assim:")
+        print(f'  python filtrar_rfb2.py "C:\\caminho\\para\\pasta\\rfb"')
+        print(f"\nSe não tiver os arquivos, baixe em:")
+        print(f"  https://dados.gov.br → buscar 'CNPJ' → Estabelecimentos + Empresas")
+        print(f"{'='*60}")
         sys.exit(1)
 
     print(f"\nArquivos de Estabelecimentos encontrados ({len(arqs)}):")
