@@ -31,14 +31,14 @@ PASTA_DADOS = ""
 # Caminhos dos arquivos — use o caminho COMPLETO ou só o nome se PASTA_DADOS estiver preenchido
 # Deixe "" se não tiver o arquivo; o motor roda mesmo sem ele (com menos cruzamentos)
 ARQUIVO_BDGD    = r"C:\Users\RODRIGO\Desktop\EXCEL\ucmt_pj.csv"
-ARQUIVO_BDGD_2  = ""   # UCAT (alta tensão) — não encontrado
-ARQUIVO_CCEE    = r"C:\Users\RODRIGO\Desktop\EXCEL\lista_perfil_v1_2026.csv"
-ARQUIVO_CNPJ    = ""   # Estabelecimentos RFB — não encontrado
-ARQUIVO_CNPJ_EMP= r"C:\Users\RODRIGO\Desktop\EXCEL\empresas_mapa_final.csv"
-ARQUIVO_GD      = ""   # GD ANEEL — não encontrado
+ARQUIVO_BDGD_2  = ""   # UCAT (alta tensão) — opcional
+ARQUIVO_CCEE    = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\files (1)\lista_perfil_v1_2026.csv"
+ARQUIVO_CNPJ    = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\Automacoes\CONSULTA CNPJ\enderecos_cnpj.csv"
+ARQUIVO_CNPJ_EMP= r"C:\Users\RODRIGO\Desktop\Motor de Prospecção\Automacoes\CNPJs_Enderecos.xlsx"
+ARQUIVO_GD      = ""   # GD ANEEL — opcional
 
-# Pasta onde o resultado será salvo (deixe "" para salvar na Área de Trabalho)
-PASTA_SAIDA = r"C:\Users\RODRIGO\Desktop"
+# Pasta onde o resultado será salvo
+PASTA_SAIDA = r"C:\Users\RODRIGO\Desktop\Motor de Prospecção"
 
 # ── Parâmetros comerciais ─────────────────────────────────────────────────────
 TARIFA_CATIVA        = 0.82     # R$/kWh — tarifa média cativa com impostos
