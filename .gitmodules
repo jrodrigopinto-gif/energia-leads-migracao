@@ -1,0 +1,3 @@
+[submodule "tools/skillspector"]
+	path = tools/skillspector
+	url = https://github.com/NVIDIA/skillspector.git
