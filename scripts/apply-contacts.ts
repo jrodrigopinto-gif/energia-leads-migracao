@@ -1,5 +1,6 @@
 // Aplica o CSV de contatos encontrados (gerado por
-// scripts/enrich_contacts_rfb.py) na tabela Prospect.
+// scripts/enrich_contacts_rfb.py ou enrich_contacts_rfb_local.py) na
+// tabela Prospect.
 // Uso: tsx scripts/apply-contacts.ts contacts_found.csv
 import "dotenv/config";
 import { readFileSync } from "node:fs";
@@ -14,6 +15,8 @@ interface ContactRow {
   email: string;
 }
 
+const CONCURRENCY = 50;
+
 function parseCsv(content: string): ContactRow[] {
   const lines = content.trim().split("\n");
   const header = lines[0].split(",");
@@ -27,6 +30,45 @@ function parseCsv(content: string): ContactRow[] {
   });
 }
 
+/** Descarta telefones inválidos/placeholder (vazio, "0000", "00000000", etc). */
+function cleanPhone(value: string): string | null {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 0 || /^0+$/.test(digits)) return null;
+  return digits;
+}
+
+function cleanEmail(value: string): string | null {
+  const v = value.trim().toLowerCase();
+  return v.length > 3 && v.includes("@") ? v : null;
+}
+
+async function processRow(row: ContactRow): Promise<0 | 1> {
+  if (!row.cnpj) return 0;
+
+  const telefone1 = cleanPhone(row.telefone1);
+  const telefoneDdd1 = telefone1 ? cleanPhone(row.ddd1) : null;
+  const telefone2 = cleanPhone(row.telefone2);
+  const telefoneDdd2 = telefone2 ? cleanPhone(row.ddd2) : null;
+  const email = cleanEmail(row.email);
+
+  if (!telefone1 && !telefone2 && !email) return 0;
+
+  const result = await prisma.prospect.updateMany({
+    where: { cnpj: row.cnpj },
+    data: {
+      telefoneDdd1,
+      telefone1,
+      telefoneDdd2,
+      telefone2,
+      email,
+      contatoFonte: "RFB",
+      contatoAtualizadoPor: "sync:rfb-contatos",
+      contatoAtualizadoEm: new Date(),
+    },
+  });
+  return result.count > 0 ? 1 : 0;
+}
+
 async function main() {
   const path = process.argv[2];
   if (!path) {
@@ -38,25 +80,21 @@ async function main() {
   console.log(`Lidos ${rows.length} contatos de ${path}`);
 
   let updated = 0;
-  for (const row of rows) {
-    if (!row.cnpj) continue;
-    const result = await prisma.prospect.updateMany({
-      where: { cnpj: row.cnpj },
-      data: {
-        telefoneDdd1: row.ddd1 || null,
-        telefone1: row.telefone1 || null,
-        telefoneDdd2: row.ddd2 || null,
-        telefone2: row.telefone2 || null,
-        email: row.email || null,
-        contatoFonte: "RFB",
-        contatoAtualizadoPor: "sync:rfb-contatos",
-        contatoAtualizadoEm: new Date(),
-      },
-    });
-    updated += result.count;
+  let skipped = 0;
+  for (let i = 0; i < rows.length; i += CONCURRENCY) {
+    const batch = rows.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(processRow));
+    for (const r of results) {
+      if (r) updated++;
+      else skipped++;
+    }
+
+    if ((i / CONCURRENCY) % 20 === 0) {
+      console.log(`  ...${Math.min(i + CONCURRENCY, rows.length)}/${rows.length} processados (${updated} atualizados)`);
+    }
   }
 
-  console.log(`Concluído. ${updated} unidades consumidoras (Prospect) atualizadas com contato.`);
+  console.log(`Concluído. ${updated} leads atualizados com contato, ${skipped} sem contato válido/ignorados.`);
 }
 
 main()
