@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #05080a;
+  --surface: #0b1015;
+  --surface-2: #0f151b;
+  --border: rgba(0, 255, 163, 0.14);
+  --foreground: #e7fff3;
+  --muted: #7d9c92;
+  --brand: #00ffa3;
+  --brand-dim: #00c37c;
+  --brand-glow: rgba(0, 255, 163, 0.35);
+  --danger: #ff5f6d;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-dim: var(--brand-dim);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(0, 255, 163, 0.08), transparent 60%),
+    radial-gradient(900px 500px at -10% 20%, rgba(0, 255, 163, 0.06), transparent 55%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
-body {
-  background: var(--background);
+.lv-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 255, 163, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 163, 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.lv-panel {
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.lv-glow-text {
+  text-shadow: 0 0 24px var(--brand-glow);
+}
+
+.lv-btn-primary {
+  background: linear-gradient(135deg, var(--brand), var(--brand-dim));
+  color: #04140d;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(0, 255, 163, 0.3), 0 8px 24px -8px var(--brand-glow);
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.lv-btn-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.lv-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.lv-input {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+.lv-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+::selection {
+  background: var(--brand-glow);
+}
+
+.lv-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.lv-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
 }

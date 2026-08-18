@@ -24,8 +24,46 @@ const SAMPLE_MIGRATED = [
   { cnpj: "77888999000167", nomeConsumidor: "Celulose Rio Doce Ltda.", agenteVarejista: "EnergyTrade Comercializadora", submercado: "Sudeste" },
 ];
 
+const PLANS = [
+  {
+    slug: "consultor-uf",
+    name: "Consultor — 1 UF",
+    description: "Acesso à base de leads de energia (Grupo A) de um estado à sua escolha.",
+    priceCents: 9900,
+    interval: "month",
+    ufAccess: null,
+    maxExports: 500,
+  },
+  {
+    slug: "consultor-nacional",
+    name: "Consultor — Nacional",
+    description: "Acesso completo à base de leads de todos os estados, sem limite de exportação.",
+    priceCents: 24900,
+    interval: "month",
+    ufAccess: null,
+    maxExports: null,
+  },
+  {
+    slug: "equipe-igreen",
+    name: "Equipe iGreen",
+    description: "Para squads de consultores: acesso nacional compartilhado e prioridade de suporte.",
+    priceCents: 59900,
+    interval: "month",
+    ufAccess: null,
+    maxExports: null,
+  },
+];
+
 async function main() {
   console.log("Seeding sample data (fictício, apenas para demo do dashboard)...");
+
+  for (const plan of PLANS) {
+    await prisma.plan.upsert({
+      where: { slug: plan.slug },
+      create: plan,
+      update: plan,
+    });
+  }
 
   for (const c of SAMPLE_CANDIDATES) {
     await prisma.candidateCompany.upsert({
@@ -43,7 +81,9 @@ async function main() {
     });
   }
 
-  console.log(`Ok: ${SAMPLE_CANDIDATES.length} candidatos, ${SAMPLE_MIGRATED.length} migrados.`);
+  console.log(
+    `Ok: ${PLANS.length} planos, ${SAMPLE_CANDIDATES.length} candidatos, ${SAMPLE_MIGRATED.length} migrados.`
+  );
 }
 
 main()

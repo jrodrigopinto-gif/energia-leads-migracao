@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Energia Leads Migração",
-  description: "Encontre grandes e médios consumidores de energia (Grupo A) ainda no mercado cativo",
+  title: "LeadVolt — Prospecção de leads para consultores iGreen Energy",
+  description:
+    "LeadVolt encontra grandes e médios consumidores de energia (Grupo A) ainda no mercado cativo — leads prontos para os consultores da iGreen Energy migrarem para o mercado livre.",
 };
 
 export default function RootLayout({
@@ -25,9 +26,9 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-neutral-50 text-neutral-900">{children}</body>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

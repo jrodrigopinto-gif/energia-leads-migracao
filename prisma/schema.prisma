@@ -67,3 +67,111 @@ model SyncLog {
   recordsProcessed Int       @default(0)
   message          String?
 }
+
+// --- LeadVolt: contas, licenças e leads prontos (base "prospects_FINAL") ---
+
+enum UserRole {
+  ADMIN
+  CONSULTOR
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(CONSULTOR)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  subscriptions Subscription[]
+}
+
+// Plano de licença vendido aos consultores da iGreen Energy.
+model Plan {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  description   String?
+  priceCents    Int
+  interval      String   @default("month") // month | year
+  ufAccess      String?  // null = todas as UFs; senão CSV de UFs liberadas no plano
+  maxExports    Int?     // limite mensal de exportação (null = ilimitado)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  subscriptions Subscription[]
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+// Licença de um consultor para um plano, cobrada via Mercado Pago.
+model Subscription {
+  id                 String             @id @default(cuid())
+  userId             String
+  user               User               @relation(fields: [userId], references: [id])
+  planId             String
+  plan               Plan               @relation(fields: [planId], references: [id])
+  status             SubscriptionStatus @default(PENDING)
+  mpPreferenceId     String?
+  mpPaymentId        String?
+  mpSubscriptionId   String?
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  payments Payment[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+// Registro de cada pagamento/notificação recebida do Mercado Pago.
+model Payment {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+  mpPaymentId    String   @unique
+  status         String
+  amountCents    Int
+  rawPayload     String?
+  createdAt      DateTime @default(now())
+}
+
+// Lead pronto para prospecção: unidade consumidora de alta tensão (Grupo A)
+// já cruzada com a base ANEEL/distribuidoras e excluída dos migrados CCEE.
+// Importado da planilha "prospects_FINAL_organizado.xlsx" (uma linha por UC).
+model Prospect {
+  id                     String   @id @default(cuid())
+  distribuidora          String
+  pnCon                  String?
+  cnpj                   String
+  razaoSocial            String
+  nomeFantasia           String?
+  naturezaJuridica       String?
+  porteEmpresa           String?
+  capitalSocial          Float?
+  uf                     String
+  cep                    String?
+  bairro                 String?
+  tipoLogradouro         String?
+  logradouro             String?
+  numero                 String?
+  cnae                   String
+  grupoTensao            String?
+  grupoTarifario         String?
+  demandaContratadaKw    Float
+  origemMatch            String?
+  qtdCandidatosParaEssaUc Int?
+  createdAt              DateTime @default(now())
+
+  @@index([uf])
+  @@index([cnae])
+  @@index([cnpj])
+  @@index([demandaContratadaKw])
+}

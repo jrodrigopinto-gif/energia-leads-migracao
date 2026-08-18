@@ -1,8 +1,62 @@
-# Energia Leads Migração
+# LeadVolt
 
-Aplicativo para encontrar grandes e médios consumidores de energia (Grupo A)
-que **ainda estão no mercado cativo**, para uso como lista de leads de
-migração para o mercado livre de energia.
+SaaS de prospecção de leads de energia para consultores da **iGreen Energy**:
+encontra grandes e médios consumidores (Grupo A) que **ainda estão no
+mercado cativo**, com login por consultor, licenças pagas (Mercado Pago) e
+dashboard de busca/exportação da base de leads.
+
+## Produto
+
+- **Cadastro/login** por e-mail e senha (`/registrar`, `/login`).
+- **Licenças mensais** (`/planos`) cobradas via Mercado Pago — 3 planos
+  seed: Consultor 1 UF, Consultor Nacional, Equipe iGreen (ver
+  `prisma/seed.ts`). Sem assinatura ativa, o consultor é redirecionado para
+  `/planos` ao tentar abrir o dashboard.
+- **Dashboard de leads** (`/dashboard`) — tabela filtrável (UF, grupo
+  tarifário, demanda mínima, busca por razão social/CNPJ) com exportação
+  CSV, sobre a tabela `Prospect` (ver "Base de leads" abaixo).
+- **Admin** (`/admin/sync`, role `ADMIN`) — painel interno com o pipeline
+  legado RFB/CCEE (ver seção técnica abaixo), não visível a consultores.
+
+### Base de leads (`Prospect`)
+
+A tabela `Prospect` é alimentada a partir de uma planilha já pronta
+(`prospects_FINAL_organizado.xlsx`, uma aba por UF) que cruza unidades
+consumidoras de alta tensão (Grupo A, base ANEEL/distribuidoras) com a
+CCEE, e chega pronta para importar:
+
+```bash
+npm run import:prospects -- /caminho/para/prospects_FINAL_organizado.xlsx
+```
+
+Crie o primeiro usuário administrador com:
+
+```bash
+npm run create:admin -- admin@igreen.energy "senha-forte-aqui" "Nome do Admin"
+```
+
+### Cobrança (Mercado Pago)
+
+Defina `MERCADOPAGO_ACCESS_TOKEN` no `.env` para ativar o checkout em
+`/planos` (cria uma *Preference* e redireciona ao Checkout Pro). O webhook
+`POST /api/billing/webhook` recebe as notificações de pagamento e ativa a
+`Subscription` correspondente. Sem o token configurado, os botões de
+assinatura ficam desabilitados e a página mostra um aviso.
+
+### Autenticação
+
+Sessão via cookie httpOnly assinado (JWT, `jose`) — ver `src/lib/session.ts`
+e `src/lib/dal.ts`. Proteção de rotas em `proxy.ts` (⚠️ nesta versão do
+Next.js o arquivo é `proxy.ts`, não `middleware.ts` — ver
+`node_modules/next/dist/docs`). Defina `SESSION_SECRET` no `.env` (string
+aleatória, ex: `openssl rand -base64 32`).
+
+---
+
+## Pipeline técnico de origem (RFB × CCEE)
+
+A base "prospects" acima foi construída a partir do mesmo princípio deste
+pipeline interno (mantido em `/admin/sync` para reprocessamento futuro):
 
 ## Como funciona (e por que não é um cruzamento direto CCEE x ANEEL)
 
@@ -50,15 +104,19 @@ perfil de cliente que você quer prospectar.
 ## Stack
 
 - Next.js 16 (App Router) + TypeScript + Tailwind
-- Prisma + SQLite (dev). Para produção, troque o `DATABASE_URL` para Postgres
-  e ajuste o `datasource` em `prisma/schema.prisma`.
+- Prisma + PostgreSQL
+- Autenticação própria (cookie JWT via `jose` + `bcryptjs`)
+- Mercado Pago SDK (checkout de licenças)
 
 ## Rodando localmente
 
 ```bash
+cp .env.example .env   # preencha DATABASE_URL, SESSION_SECRET, MERCADOPAGO_ACCESS_TOKEN
 npm install
 npx prisma migrate dev
-npm run db:seed   # popula com dados de EXEMPLO (fictícios) para ver o dashboard
+npm run db:seed                       # planos de licença + dados de EXEMPLO (fictícios)
+npm run import:prospects -- /caminho/para/prospects_FINAL_organizado.xlsx
+npm run create:admin -- admin@igreen.energy "senha-forte" "Nome"
 npm run dev
 ```
 
@@ -113,33 +171,53 @@ isso, mas confirme com uma execução real).
 ## Estrutura
 
 ```
+proxy.ts                # proteção de rotas (login/licença/admin) — substitui middleware.ts
 src/
-  app/                 # páginas e rotas de API (App Router)
-    api/sync/ccee       # POST — dispara sync CCEE
-    api/sync/rfb        # POST — dispara sync RFB
-    api/leads           # GET — lista/filtra/exporta leads (?format=csv)
-    api/stats           # GET — estatísticas do dashboard
-  config/cnae.ts        # lista de CNAEs "grande/médio consumidor"
+  app/
+    page.tsx             # landing pública (marketing + planos)
+    login/, registrar/   # autenticação
+    dashboard/           # tabela de leads (Prospect), protegida por licença ativa
+    planos/               # escolha de plano + checkout Mercado Pago
+    admin/sync/           # painel do pipeline legado RFB/CCEE (role ADMIN)
+    actions/auth.ts       # server actions: login, signup, logout
+    api/
+      prospects           # GET — lista/filtra/exporta leads pagos (?format=csv)
+      billing/checkout    # POST — cria Preference no Mercado Pago
+      billing/webhook     # POST — recebe notificações de pagamento
+      sync/ccee, sync/rfb # POST — pipeline legado (admin only)
+      leads, stats        # pipeline legado (admin only)
+  components/            # Logo, AppShell, ProspectsTable, CheckoutButton, AdminSyncPanel
+  config/cnae.ts          # lista de CNAEs "grande/médio consumidor" (pipeline legado)
   lib/
-    ccee.ts             # ingestão CCEE (CKAN API)
-    rfb.ts              # ingestão RFB (streaming zip/csv)
-    rfbLayout.ts         # parsing dos layouts de Estabelecimentos/Empresas
-    leads.ts            # lógica de cruzamento (candidatos - migrados = leads)
-    cnpj.ts             # normalização de CNPJ / CNPJ raiz
+    session.ts, dal.ts    # sessão (cookie JWT) e data access layer de auth
+    mercadopago.ts        # cliente do SDK Mercado Pago
+    prospects.ts          # queries da base de leads paga (Prospect)
+    ccee.ts, rfb.ts, rfbLayout.ts, leads.ts  # pipeline legado RFB/CCEE
+    cnpj.ts               # normalização de CNPJ / CNPJ raiz
 prisma/
-  schema.prisma         # CandidateCompany, MigratedConsumer, SyncLog
-  seed.ts               # dados de exemplo fictícios
+  schema.prisma          # User, Plan, Subscription, Payment, Prospect + pipeline legado
+  seed.ts                # planos de licença + dados de exemplo fictícios (pipeline legado)
 scripts/
-  sync-ccee.ts          # CLI para rodar o sync CCEE (cron)
-  sync-rfb.ts           # CLI para rodar o sync RFB (cron/background)
+  import-prospects.ts    # importa prospects_FINAL_organizado.xlsx para Prospect
+  create-admin.ts        # cria/atualiza usuário ADMIN
+  sync-ccee.ts, sync-rfb.ts  # CLI do pipeline legado (cron)
 ```
 
 ## Próximos passos sugeridos
 
-- Persistir em Postgres em produção (SQLite é só para dev local).
-- Agendar `sync:ccee` (ex: mensal, quando a CCEE publica atualização) e
-  `sync:rfb` (ex: trimestral) via cron.
-- Autenticação, caso o dashboard vá para além de uso pessoal/interno.
+- Configurar `MERCADOPAGO_ACCESS_TOKEN` de produção e testar o fluxo de
+  checkout/webhook de ponta a ponta (hoje só validado com o token ausente,
+  modo "cobrança desativada").
+- Ligar `maxExports`/`ufAccess` do `Plan` a uma checagem real de uso em
+  `/api/prospects` (hoje os campos existem no schema mas não são aplicados).
+- Reimportar `Prospect` periodicamente conforme a iGreen Energy atualizar a
+  planilha `prospects_FINAL_organizado.xlsx` (ou reativar o pipeline
+  RFB/CCEE legado em `/admin/sync` para gerar a base do zero).
+- E-mail transacional (boas-vindas, confirmação de pagamento, aviso de
+  assinatura vencida) — hoje não há envio de e-mail implementado.
 - Enriquecimento de contatos dos leads (decisor, e-mail, telefone) via
   ferramentas de prospecção B2B, sob demanda e com custo por lead — fora do
   escopo automatizado deste app.
+- Base de conhecimento da iGreen Energy (o usuário mencionou que vai
+  enviá-la) — provavelmente vira conteúdo de apoio/treinamento dentro do
+  dashboard do consultor.

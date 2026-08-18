@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { syncCceeMigrated } from "@/lib/ccee";
+import { getCurrentUser } from "@/lib/dal";
 
 export async function POST() {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Acesso restrito a administradores." }, { status: 403 });
+  }
+
   const log = await prisma.syncLog.create({ data: { source: "CCEE" } });
   try {
     const { processed, resourceName } = await syncCceeMigrated();
