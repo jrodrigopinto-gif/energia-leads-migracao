@@ -12,7 +12,9 @@
     "sync:ccee": "tsx scripts/sync-ccee.ts",
     "sync:rfb": "tsx scripts/sync-rfb.ts",
     "import:prospects": "tsx scripts/import-prospects.ts",
-    "create:admin": "tsx scripts/create-admin.ts"
+    "create:admin": "tsx scripts/create-admin.ts",
+    "export:cnpjs": "tsx scripts/export-prospect-cnpjs.ts",
+    "apply:contacts": "tsx scripts/apply-contacts.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

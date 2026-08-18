@@ -15,8 +15,60 @@ dashboard de busca/exportação da base de leads.
 - **Dashboard de leads** (`/dashboard`) — tabela filtrável (UF, grupo
   tarifário, demanda mínima, busca por razão social/CNPJ) com exportação
   CSV, sobre a tabela `Prospect` (ver "Base de leads" abaixo).
+- **Ficha do lead** (clique em uma linha da tabela) — endereço completo,
+  botão **Ver no mapa** (abre Google Maps com o endereço), **WhatsApp**,
+  **Ligar** e **E-mail** (links diretos quando há contato cadastrado), e
+  formulário para o consultor cadastrar/editar telefone e e-mail na hora
+  (ver "Contato direto" abaixo).
+- **App para celular (PWA)** — o próprio site é instalável no celular
+  (ícone na tela inicial, tela cheia, sem loja de app). Ver seção "PWA"
+  abaixo.
 - **Admin** (`/admin/sync`, role `ADMIN`) — painel interno com o pipeline
   legado RFB/CCEE (ver seção técnica abaixo), não visível a consultores.
+
+### Contato direto (telefone/e-mail) e mapa
+
+A planilha `prospects_FINAL_organizado.xlsx` **não tem** telefone/e-mail —
+só endereço (CEP, bairro, logradouro). O app resolve isso de duas formas,
+que convivem no mesmo campo (`Prospect.telefoneDdd1/telefone1/.../email`):
+
+1. **Manual** — qualquer consultor logado pode abrir a ficha de um lead e
+   preencher telefone/e-mail direto no app (botão "+ Adicionar contato").
+   Fica salvo para todos (`contatoFonte: "manual"`, com autor e data).
+2. **Enriquecimento via RFB** (oficial, gratuito, mesma fonte já usada no
+   pipeline legado) — a base de Dados Abertos do CNPJ da Receita Federal
+   traz DDD/telefone/e-mail cadastrados por estabelecimento. Como isso
+   exige baixar dezenas de GB de arquivos nacionais, **não roda dentro
+   deste ambiente de desenvolvimento** (rede bloqueada para domínios
+   `.gov.br`/APIs externas por política do sandbox). Rode em uma máquina
+   com internet:
+
+   ```bash
+   npm run export:cnpjs                                   # 1. gera prospect-cnpjs.csv
+   python3 scripts/enrich_contacts_rfb.py prospect-cnpjs.csv   # 2. gera contacts_found.csv (pode levar horas)
+   npm run apply:contacts -- contacts_found.csv            # 3. grava no banco
+   ```
+
+   `scripts/enrich_contacts_rfb.py` usa só a biblioteca padrão do Python 3
+   (sem `pip install`). Nem toda empresa tem telefone/e-mail cadastrado na
+   RFB — o que não for encontrado fica disponível para preenchimento
+   manual (opção 1).
+
+O botão **"Ver no mapa"** não depende de nenhuma das duas fontes acima —
+usa sempre o endereço já importado da planilha para abrir uma busca no
+Google Maps (`googleMapsSearchUrl` em `src/lib/geo.ts`), sem precisar de
+chave de API nem geocodificação prévia.
+
+### PWA (app para celular)
+
+`public/manifest.webmanifest` + `public/sw.js` (service worker mínimo,
+cacheia só o shell estático) tornam o LeadVolt instalável como app no
+celular direto pelo navegador (Chrome/Android: menu → "Instalar app";
+Safari/iOS: compartilhar → "Adicionar à Tela de Início”) — sem passar por
+loja de aplicativos. Ícones em `public/icons/` (gerados a partir do
+símbolo da marca). Não é um app nativo — se um dia for necessário
+publicar nas lojas Apple/Google, isso é um projeto à parte (React
+Native), fora do escopo atual.
 
 ### Base de leads (`Prospect`)
 
@@ -181,26 +233,33 @@ src/
     admin/sync/           # painel do pipeline legado RFB/CCEE (role ADMIN)
     actions/auth.ts       # server actions: login, signup, logout
     api/
-      prospects           # GET — lista/filtra/exporta leads pagos (?format=csv)
-      billing/checkout    # POST — cria Preference no Mercado Pago
-      billing/webhook     # POST — recebe notificações de pagamento
-      sync/ccee, sync/rfb # POST — pipeline legado (admin only)
-      leads, stats        # pipeline legado (admin only)
-  components/            # Logo, AppShell, ProspectsTable, CheckoutButton, AdminSyncPanel
-  config/cnae.ts          # lista de CNAEs "grande/médio consumidor" (pipeline legado)
+      prospects            # GET — lista/filtra/exporta leads pagos (?format=csv)
+      prospects/[id]       # GET ficha do lead / PATCH contato manual (telefone/e-mail)
+      billing/checkout     # POST — cria Preference no Mercado Pago
+      billing/webhook      # POST — recebe notificações de pagamento
+      sync/ccee, sync/rfb  # POST — pipeline legado (admin only)
+      leads, stats         # pipeline legado (admin only)
+  components/             # Logo, AppShell, ProspectsTable, LeadDetailDrawer,
+                           # CheckoutButton, AdminSyncPanel, PwaRegister
+  config/cnae.ts           # lista de CNAEs "grande/médio consumidor" (pipeline legado)
   lib/
-    session.ts, dal.ts    # sessão (cookie JWT) e data access layer de auth
-    mercadopago.ts        # cliente do SDK Mercado Pago
-    prospects.ts          # queries da base de leads paga (Prospect)
+    session.ts, dal.ts     # sessão (cookie JWT) e data access layer de auth
+    mercadopago.ts         # cliente do SDK Mercado Pago
+    prospects.ts           # queries + updateProspectContact da base de leads (Prospect)
+    geo.ts                 # link do Google Maps, tel:/wa.me/mailto:, formatação de endereço/telefone
     ccee.ts, rfb.ts, rfbLayout.ts, leads.ts  # pipeline legado RFB/CCEE
-    cnpj.ts               # normalização de CNPJ / CNPJ raiz
+    cnpj.ts                # normalização de CNPJ / CNPJ raiz
 prisma/
-  schema.prisma          # User, Plan, Subscription, Payment, Prospect + pipeline legado
-  seed.ts                # planos de licença + dados de exemplo fictícios (pipeline legado)
+  schema.prisma           # User, Plan, Subscription, Payment, Prospect (+ contato) + pipeline legado
+  seed.ts                 # planos de licença + dados de exemplo fictícios (pipeline legado)
 scripts/
-  import-prospects.ts    # importa prospects_FINAL_organizado.xlsx para Prospect
-  create-admin.ts        # cria/atualiza usuário ADMIN
+  import-prospects.ts     # importa prospects_FINAL_organizado.xlsx para Prospect
+  create-admin.ts         # cria/atualiza usuário ADMIN
+  export-prospect-cnpjs.ts, apply-contacts.ts  # ponta Node do enriquecimento de contato
+  enrich_contacts_rfb.py  # ponta Python do enriquecimento (roda fora deste sandbox)
   sync-ccee.ts, sync-rfb.ts  # CLI do pipeline legado (cron)
+public/
+  manifest.webmanifest, sw.js, icons/  # PWA (app instalável no celular)
 ```
 
 ## Próximos passos sugeridos
@@ -215,9 +274,12 @@ scripts/
   RFB/CCEE legado em `/admin/sync` para gerar a base do zero).
 - E-mail transacional (boas-vindas, confirmação de pagamento, aviso de
   assinatura vencida) — hoje não há envio de e-mail implementado.
-- Enriquecimento de contatos dos leads (decisor, e-mail, telefone) via
-  ferramentas de prospecção B2B, sob demanda e com custo por lead — fora do
-  escopo automatizado deste app.
+- Rodar `scripts/enrich_contacts_rfb.py` de ponta a ponta em uma máquina
+  com internet para popular telefone/e-mail em massa (hoje só validado o
+  fluxo manual, direto no app).
+- App nativo (iOS/Android via loja) — hoje o "app para celular" é PWA
+  (instalável pelo navegador); nativo é um projeto à parte caso vire
+  necessidade real.
 - Base de conhecimento da iGreen Energy (o usuário mencionou que vai
   enviá-la) — provavelmente vira conteúdo de apoio/treinamento dentro do
   dashboard do consultor.

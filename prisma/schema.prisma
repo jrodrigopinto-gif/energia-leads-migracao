@@ -170,6 +170,19 @@ model Prospect {
   qtdCandidatosParaEssaUc Int?
   createdAt              DateTime @default(now())
 
+  // Contato direto — não vem na planilha original (sem telefone/e-mail).
+  // Preenchido por enriquecimento via base pública da RFB (script
+  // scripts/enrich-contacts-rfb.ts, roda fora deste ambiente por exigir
+  // acesso à internet) ou manualmente pelo consultor no app.
+  telefoneDdd1           String?
+  telefone1              String?
+  telefoneDdd2           String?
+  telefone2              String?
+  email                  String?
+  contatoFonte           String? // "RFB" | "manual"
+  contatoAtualizadoPor   String?
+  contatoAtualizadoEm    DateTime?
+
   @@index([uf])
   @@index([cnae])
   @@index([cnpj])

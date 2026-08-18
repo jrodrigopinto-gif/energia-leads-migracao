@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { formatCnpj } from "@/lib/cnpj";
+import { LeadDetailDrawer } from "@/components/LeadDetailDrawer";
 
 interface Prospect {
   id: string;
@@ -40,6 +41,7 @@ export function ProspectsTable() {
   const [demandaMin, setDemandaMin] = useState("");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const pageSize = 25;
 
   const loadOptions = useCallback(async () => {
@@ -143,6 +145,7 @@ export function ProspectsTable() {
         </div>
       </section>
 
+      <p className="mb-2 text-xs text-muted">Clique em um lead para ver contato, mapa e endereço.</p>
       <section className="lv-panel lv-scrollbar overflow-x-auto">
         <table className="w-full min-w-[820px] text-sm">
           <thead className="border-b border-border text-left text-xs uppercase text-muted">
@@ -163,7 +166,11 @@ export function ProspectsTable() {
               <tr><td colSpan={6} className="px-4 py-6 text-center text-muted">Nenhum lead encontrado com esses filtros.</td></tr>
             )}
             {!loading && items.map((p) => (
-              <tr key={p.id} className="border-b border-border/60 last:border-0">
+              <tr
+                key={p.id}
+                onClick={() => setSelectedId(p.id)}
+                className="cursor-pointer border-b border-border/60 last:border-0 hover:bg-white/[0.03]"
+              >
                 <td className="px-4 py-2">
                   <div className="font-medium">{p.razaoSocial}</div>
                   {p.nomeFantasia && <div className="text-xs text-muted">{p.nomeFantasia}</div>}
@@ -201,6 +208,8 @@ export function ProspectsTable() {
           </button>
         </div>
       </div>
+
+      {selectedId && <LeadDetailDrawer id={selectedId} onClose={() => setSelectedId(null)} />}
     </div>
   );
 }

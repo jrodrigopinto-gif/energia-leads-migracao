@@ -65,6 +65,30 @@ export async function getProspectFilterOptions() {
   };
 }
 
+export async function getProspectById(id: string) {
+  return prisma.prospect.findUnique({ where: { id } });
+}
+
+export interface ContactUpdateInput {
+  telefoneDdd1?: string | null;
+  telefone1?: string | null;
+  telefoneDdd2?: string | null;
+  telefone2?: string | null;
+  email?: string | null;
+}
+
+export async function updateProspectContact(id: string, data: ContactUpdateInput, updatedByName: string) {
+  return prisma.prospect.update({
+    where: { id },
+    data: {
+      ...data,
+      contatoFonte: "manual",
+      contatoAtualizadoPor: updatedByName,
+      contatoAtualizadoEm: new Date(),
+    },
+  });
+}
+
 export async function getProspectStats() {
   const [total, byUf] = await Promise.all([
     prisma.prospect.count(),
