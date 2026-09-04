@@ -142,15 +142,57 @@ Variáveis de ambiente opcionais:
 
 ### Nota sobre este ambiente de desenvolvimento
 
-Os syncs reais (CCEE/RFB) **não foram executados durante o desenvolvimento**
-deste app porque o sandbox onde ele foi construído bloqueia acesso de saída
-a domínios `.gov.br` (política de rede do ambiente). O código de ingestão
-segue os formatos oficiais documentados dessas bases e está pronto para
-rodar em um ambiente com acesso à internet liberado — mas vale rodar
-`npm run sync:ccee` uma vez em um ambiente com acesso antes de confiar 100%
-no parser (o layout do CSV da CCEE já mudou de formato entre publicações,
-e o código tenta reconhecer colunas por nome parcial para ser resiliente a
-isso, mas confirme com uma execução real).
+Os syncs reais (CCEE/RFB/ANEEL) **não foram executados durante o
+desenvolvimento** deste app porque o sandbox onde ele foi construído
+(Claude Code on the web) usa uma política de rede de *allowlist*: só libera
+saída para um conjunto fixo de domínios (registry npm, GitHub API, API da
+Anthropic etc.) e bloqueia todo o resto — não é específico de `.gov.br`,
+foi testado até contra `example.com` e `receitaws.com.br` e ambos foram
+recusados pelo proxy do ambiente (HTTP 403 no `CONNECT`). Ou seja: **não é
+um problema de autenticação/chave de API** — nenhuma chave resolve um
+domínio bloqueado na política de rede.
+
+O código de ingestão segue os formatos oficiais documentados dessas bases e
+está pronto para rodar assim que a rede for liberada. Duas formas de
+resolver:
+
+1. **Rodar fora deste ambiente** — sua máquina, um servidor, ou uma sessão
+   local do Claude Code sem essa restrição de rede.
+2. **Liberar os domínios na política de rede do ambiente** (em
+   claude.ai/code, ao criar/editar o ambiente — ver
+   [docs](https://code.claude.com/docs/en/claude-code-on-the-web)). Domínios
+   usados por este app:
+
+   | Domínio | Usado por |
+   |---|---|
+   | `dadosabertos.ccee.org.br` | `sync:ccee` |
+   | `dadosabertos.rfb.gov.br` | `sync:rfb` |
+   | `dadosabertos.aneel.gov.br` | `sync:siga` |
+   | `brasilapi.com.br` (opcional) | fallback de consulta CNPJ/CEP sem chave, ver abaixo |
+   | `receitaws.com.br` (opcional) | fallback de consulta CNPJ sem chave, ver abaixo |
+   | `viacep.com.br` (opcional) | fallback/validação de CEP sem chave, ver abaixo |
+
+Vale rodar `npm run sync:ccee` uma vez em um ambiente com acesso antes de
+confiar 100% no parser (o layout do CSV da CCEE já mudou de formato entre
+publicações, e o código tenta reconhecer colunas por nome parcial para ser
+resiliente a isso, mas confirme com uma execução real).
+
+### Fontes alternativas sem chave (não usadas ainda, mas mapeadas)
+
+Nenhuma delas substitui a RFB para montar o universo completo (são só
+consulta unitária por CNPJ/CEP, não bulk download), mas servem para
+validar/enriquecer pontualmente um lead específico sem precisar de chave de
+API paga:
+
+- [BrasilAPI](https://brasilapi.com.br) — `GET /api/cnpj/v1/{cnpj}`
+  (dados cadastrais + endereço), `GET /api/cep/v2/{cep}` (endereço com
+  latitude/longitude quando disponível — útil para o passo de geocodificação
+  citado em "Próximos passos").
+- [ReceitaWS](https://receitaws.com.br) — `GET /v1/cnpj/{cnpj}`, alternativa
+  à BrasilAPI para dados cadastrais por CNPJ (limite de requisições no plano
+  gratuito).
+- [ViaCEP](https://viacep.com.br) — `GET /ws/{cep}/json/`, endereço a partir
+  do CEP (sem latitude/longitude).
 
 ## Estrutura
 
