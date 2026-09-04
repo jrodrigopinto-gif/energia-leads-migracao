@@ -40,12 +40,38 @@ cativa**.
 | Fonte | Dataset | Conteúdo | Identificado? |
 |---|---|---|---|
 | CCEE | `VAREJISTA_CONSUMIDOR` (CKAN API) | Consumidores já migrados para o mercado livre | Sim (razão social/CNPJ) |
-| Receita Federal | Dados Abertos do CNPJ (`Estabelecimentos*.zip` + `Empresas*.zip`) | Universo de empresas ativas por CNAE/UF/porte | Sim |
+| Receita Federal | Dados Abertos do CNPJ (`Estabelecimentos*.zip` + `Empresas*.zip`) | Universo de empresas ativas por CNAE/UF/porte, com telefone/e-mail/endereço completo | Sim |
+| ANEEL — SIGA Geração Distribuída | CKAN API | Consumidores PJ com geração própria (mini/microgeração, autoprodução) | Sim (CNPJ do titular) |
 | ANEEL (BDGD) | — | Não usada para identificação (dados anonimizados) — ver ressalva acima | Não |
 
 A lista de CNAEs usada para montar o universo de candidatos fica em
 [`src/config/cnae.ts`](./src/config/cnae.ts) — edite/expanda conforme o
-perfil de cliente que você quer prospectar.
+perfil de cliente que você quer prospectar. A lista atual cobre ~90 CNAEs de
+setores intensivos em energia (mineração, siderurgia, química, papel e
+celulose, agroindústria, cerâmica/vidro, shopping centers, hospitais, data
+centers, aeroportos etc.) — deliberadamente mais ampla que a lista original,
+para reduzir o número de empresas Grupo A que ficam de fora do universo.
+
+### Correções desta atualização (dados de contato/localização e cobertura)
+
+- **Telefone, e-mail e endereço completo agora vêm direto da RFB** (campos
+  oficiais `ddd1`/`telefone1`, `correioEletronico`, `logradouro`/`numero`/
+  `complemento`/`bairro`/`cep` do cadastro de Estabelecimentos), em vez de uma
+  fonte de enriquecimento de terceiros — isso é o que corrige inconsistências
+  de telefone/localidade vistas em listas geradas por planilhas
+  manuais/enriquecidas externamente.
+- O CNPJ completo do candidato agora usa a ordem/DV reais do estabelecimento
+  **matriz** (antes usava um sufixo fixo `000100`, que podia gerar CNPJ
+  inválido/incorreto quando a matriz não era a filial `0001`).
+- A lista de CNAEs foi ampliada de 24 para ~90 códigos, cobrindo mais setores
+  de perfil Grupo A (antes faltavam mineração, siderurgia completa, química
+  pesada, têxtil/couro, hotelaria de grande porte, universidades, aeroportos
+  etc.), o que deve trazer bem mais empresas para o universo de candidatos.
+- Nova fonte **ANEEL SIGA-GD** identifica geração própria por CNPJ (diferente
+  da BDGD, que é anonimizada). Cada lead agora traz `status`
+  (`cativo` / `geracao_propria`) e o dashboard mostra um card e um selo por
+  linha — assim você não confunde "ainda não migrou" com "já tem geração
+  própria reduzindo consumo da rede".
 
 ## Stack
 
@@ -74,6 +100,18 @@ npm run sync:ccee
 
 Ou pelo botão "Sincronizar" no dashboard (chama `POST /api/sync/ccee`).
 
+### ANEEL SIGA-GD (geração própria) — rápido
+
+```bash
+npm run sync:siga
+```
+
+Ou pelo botão "Sincronizar" no dashboard (chama `POST /api/sync/siga`).
+⚠️ Confirme o slug do dataset em
+[dadosabertos.aneel.gov.br/dataset](https://dadosabertos.aneel.gov.br/dataset)
+antes do primeiro sync — o nome exato (`ANEEL_GD_DATASET`) já mudou entre
+publicações do portal.
+
 ### Receita Federal (universo de candidatos) — pesado
 
 ```bash
@@ -97,6 +135,10 @@ Variáveis de ambiente opcionais:
   descobrir automaticamente a mais recente
 - `CCEE_BASE_URL` — base do portal CKAN da CCEE (default:
   `https://dadosabertos.ccee.org.br`)
+- `ANEEL_BASE_URL` — base do portal CKAN da ANEEL (default:
+  `https://dadosabertos.aneel.gov.br`)
+- `ANEEL_GD_DATASET` — slug do dataset SIGA-GD (default:
+  `siga-geracao-distribuida` — confirme antes de usar, ver acima)
 
 ### Nota sobre este ambiente de desenvolvimento
 
@@ -117,29 +159,36 @@ src/
   app/                 # páginas e rotas de API (App Router)
     api/sync/ccee       # POST — dispara sync CCEE
     api/sync/rfb        # POST — dispara sync RFB
+    api/sync/siga       # POST — dispara sync ANEEL SIGA-GD (geração própria)
     api/leads           # GET — lista/filtra/exporta leads (?format=csv)
     api/stats           # GET — estatísticas do dashboard
-  config/cnae.ts        # lista de CNAEs "grande/médio consumidor"
+  config/cnae.ts        # lista de CNAEs "grande/médio consumidor" (~90 códigos)
   lib/
     ccee.ts             # ingestão CCEE (CKAN API)
-    rfb.ts              # ingestão RFB (streaming zip/csv)
+    rfb.ts              # ingestão RFB (streaming zip/csv) — inclui telefone/e-mail/endereço
     rfbLayout.ts         # parsing dos layouts de Estabelecimentos/Empresas
-    leads.ts            # lógica de cruzamento (candidatos - migrados = leads)
+    siga.ts             # ingestão ANEEL SIGA-GD (CKAN API) — geração própria identificada
+    leads.ts            # lógica de cruzamento (candidatos - migrados, + status de geração própria)
     cnpj.ts             # normalização de CNPJ / CNPJ raiz
 prisma/
-  schema.prisma         # CandidateCompany, MigratedConsumer, SyncLog
+  schema.prisma         # CandidateCompany, MigratedConsumer, SelfGenerationConsumer, SyncLog
   seed.ts               # dados de exemplo fictícios
 scripts/
   sync-ccee.ts          # CLI para rodar o sync CCEE (cron)
   sync-rfb.ts           # CLI para rodar o sync RFB (cron/background)
+  sync-siga.ts          # CLI para rodar o sync ANEEL SIGA-GD (cron)
 ```
 
 ## Próximos passos sugeridos
 
 - Persistir em Postgres em produção (SQLite é só para dev local).
-- Agendar `sync:ccee` (ex: mensal, quando a CCEE publica atualização) e
-  `sync:rfb` (ex: trimestral) via cron.
+- Agendar `sync:ccee` (ex: mensal), `sync:rfb` (ex: trimestral) e `sync:siga`
+  (ex: mensal, a ANEEL publica o SIGA-GD periodicamente) via cron.
 - Autenticação, caso o dashboard vá para além de uso pessoal/interno.
-- Enriquecimento de contatos dos leads (decisor, e-mail, telefone) via
-  ferramentas de prospecção B2B, sob demanda e com custo por lead — fora do
-  escopo automatizado deste app.
+- Geocodificação (CEP → latitude/longitude) para exibir os leads em mapa —
+  o endereço completo já é persistido; falta só o passo de geocoding (ex:
+  via ViaCEP + provedor de geocoding, em lote, com cache local para não
+  repetir chamadas a cada sync).
+- Contato de decisor (nome, cargo) via ferramentas de prospecção B2B, sob
+  demanda e com custo por lead — fora do escopo automatizado deste app;
+  telefone/e-mail institucional já vêm da RFB.

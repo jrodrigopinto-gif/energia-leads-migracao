@@ -22,8 +22,17 @@ model CandidateCompany {
   nomeFantasia      String?
   cnae              String
   cnaeDescricao     String?
+  naturezaJuridica  String?
   uf                String
   municipio         String?
+  bairro            String?
+  cep               String?
+  tipoLogradouro    String?
+  logradouro        String?
+  numero            String?
+  complemento       String?
+  telefone          String?
+  email             String?
   porte             String?
   situacaoCadastral String?
   dataAbertura      String?
@@ -35,6 +44,34 @@ model CandidateCompany {
   @@index([cnpjRaiz])
   @@index([uf])
   @@index([cnae])
+  @@index([cep])
+}
+
+// Consumidores com geração própria identificada (mini/microgeração distribuída
+// e autoprodução), obtidos do dataset público SIGA - Geração Distribuída da
+// ANEEL. Diferente da BDGD, este dataset É identificado por CNPJ/nome, então
+// é a fonte correta para detectar "geração própria" (ao contrário da BDGD,
+// que é anonimizada e não serve para identificar consumidores cativos).
+model SelfGenerationConsumer {
+  id             String   @id @default(cuid())
+  cnpj           String
+  cnpjRaiz       String
+  nomeConsumidor String
+  uf             String?
+  municipio      String?
+  distribuidora  String?
+  fonteGeracao   String?
+  tipoGeracao    String?
+  potenciaKw     Float?
+  dataConexao    String?
+  dataReferencia String?
+  source         String   @default("ANEEL_SIGA_GD")
+  rawData        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([cnpj, dataConexao, potenciaKw])
+  @@index([cnpjRaiz])
 }
 
 // Consumidores já registrados como migrados para o mercado livre (ACL),

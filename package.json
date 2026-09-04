@@ -10,7 +10,8 @@
     "postinstall": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "sync:ccee": "tsx scripts/sync-ccee.ts",
-    "sync:rfb": "tsx scripts/sync-rfb.ts"
+    "sync:rfb": "tsx scripts/sync-rfb.ts",
+    "sync:siga": "tsx scripts/sync-siga.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

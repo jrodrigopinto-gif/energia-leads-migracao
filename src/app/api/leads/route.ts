@@ -8,13 +8,18 @@ function parseFilters(searchParams: URLSearchParams): LeadFilters {
     cnae: searchParams.get("cnae") ?? undefined,
     porte: searchParams.get("porte") ?? undefined,
     q: searchParams.get("q") ?? undefined,
+    excludeSelfGeneration: searchParams.get("excludeSelfGeneration") === "1",
     page: Number(searchParams.get("page") ?? "1"),
     pageSize: Number(searchParams.get("pageSize") ?? "25"),
   };
 }
 
 function toCsv(rows: Awaited<ReturnType<typeof getAllLeadsForExport>>): string {
-  const header = ["CNPJ", "Razão Social", "Nome Fantasia", "CNAE", "Descrição CNAE", "UF", "Município", "Porte"];
+  const header = [
+    "CNPJ", "Razão Social", "Nome Fantasia", "CNAE", "Descrição CNAE", "Status",
+    "Telefone", "E-mail", "Logradouro", "Número", "Complemento", "Bairro", "CEP",
+    "Município", "UF", "Porte", "Data Abertura",
+  ];
   const lines = rows.map((r) =>
     [
       formatCnpj(r.cnpj),
@@ -22,9 +27,18 @@ function toCsv(rows: Awaited<ReturnType<typeof getAllLeadsForExport>>): string {
       r.nomeFantasia ?? "",
       r.cnae,
       r.cnaeDescricao ?? "",
-      r.uf,
+      r.status,
+      r.telefone ?? "",
+      r.email ?? "",
+      [r.tipoLogradouro, r.logradouro].filter(Boolean).join(" ").trim(),
+      r.numero ?? "",
+      r.complemento ?? "",
+      r.bairro ?? "",
+      r.cep ?? "",
       r.municipio ?? "",
+      r.uf,
       r.porte ?? "",
+      r.dataAbertura ?? "",
     ]
       .map((field) => `"${String(field).replace(/"/g, '""')}"`)
       .join(";")

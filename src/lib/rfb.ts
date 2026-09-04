@@ -21,11 +21,31 @@ const cnaeDescByCode = new Map(
 
 interface CandidateDraft {
   cnpjBasico: string;
+  cnpjOrdem: string;
+  cnpjDv: string;
   nomeFantasia: string;
   cnae: string;
   uf: string;
   municipio: string;
+  bairro: string;
+  cep: string;
+  tipoLogradouro: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  telefone: string;
+  email: string;
   dataAbertura: string;
+}
+
+/** Monta um telefone nacional (com DDD) a partir dos campos ddd1/telefone1 da
+ * RFB, únicos que valem a pena persistir (o campo `telefone1` já vem sem o
+ * DDD separado no cadastro). */
+function formatTelefone(ddd: string, numero: string): string | null {
+  const dddDigits = ddd.replace(/\D/g, "");
+  const numDigits = numero.replace(/\D/g, "");
+  if (!numDigits) return null;
+  return dddDigits ? `${dddDigits}${numDigits}` : numDigits;
 }
 
 /** Descobre a pasta mais recente (ex: "2026-06") disponível no índice da RFB. */
@@ -95,12 +115,26 @@ export async function syncRfbCandidates(): Promise<{ processed: number }> {
       if (!row) return;
       if (row.situacaoCadastral !== "02") return; // apenas ativas
       if (!CNAE_CODES.includes(row.cnaeFiscalPrincipal)) return;
+      // Só considera o estabelecimento matriz (filiais têm o mesmo CNPJ raiz mas
+      // endereço/telefone distintos; ficar com a matriz evita duplicar leads
+      // por CNPJ raiz e dá o endereço da sede, mais estável para prospecção).
+      if (row.identificadorMatrizFilial !== "1" && candidates.has(row.cnpjBasico)) return;
       candidates.set(row.cnpjBasico, {
         cnpjBasico: row.cnpjBasico,
+        cnpjOrdem: row.cnpjOrdem,
+        cnpjDv: row.cnpjDv,
         nomeFantasia: row.nomeFantasia,
         cnae: row.cnaeFiscalPrincipal,
         uf: row.uf,
         municipio: row.municipio,
+        bairro: row.bairro,
+        cep: row.cep,
+        tipoLogradouro: row.tipoLogradouro,
+        logradouro: row.logradouro,
+        numero: row.numero,
+        complemento: row.complemento,
+        telefone: formatTelefone(row.ddd1, row.telefone1) ?? "",
+        email: row.correioEletronico,
         dataAbertura: row.dataInicioAtividade,
       });
     });
@@ -134,7 +168,7 @@ export async function syncRfbCandidates(): Promise<{ processed: number }> {
       const draft = candidates.get(row.cnpjBasico);
       if (!draft) return;
 
-      const cnpj = `${draft.cnpjBasico}000100`.slice(0, 14).padEnd(14, "0");
+      const cnpj = `${draft.cnpjBasico}${draft.cnpjOrdem}${draft.cnpjDv}`;
       batch.push({
         cnpj,
         cnpjRaiz: cnpjRaiz(cnpj),
@@ -142,8 +176,17 @@ export async function syncRfbCandidates(): Promise<{ processed: number }> {
         nomeFantasia: draft.nomeFantasia || null,
         cnae: draft.cnae,
         cnaeDescricao: cnaeDescByCode.get(draft.cnae) ?? null,
+        naturezaJuridica: row.naturezaJuridica || null,
         uf: draft.uf,
         municipio: draft.municipio || null,
+        bairro: draft.bairro || null,
+        cep: draft.cep || null,
+        tipoLogradouro: draft.tipoLogradouro || null,
+        logradouro: draft.logradouro || null,
+        numero: draft.numero || null,
+        complemento: draft.complemento || null,
+        telefone: draft.telefone || null,
+        email: draft.email || null,
         porte: PORTE_EMPRESA[row.porteEmpresa] ?? null,
         situacaoCadastral: SITUACAO_CADASTRAL["02"],
         dataAbertura: draft.dataAbertura || null,

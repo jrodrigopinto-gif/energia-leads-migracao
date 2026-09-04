@@ -5,9 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 interface Stats {
   totalCandidates: number;
   migratedRaizCount: number;
+  selfGenRaizCount: number;
   totalLeads: number;
   lastCceeSync: { finishedAt: string | null; status: string; recordsProcessed: number } | null;
   lastRfbSync: { finishedAt: string | null; status: string; recordsProcessed: number } | null;
+  lastSigaSync: { finishedAt: string | null; status: string; recordsProcessed: number } | null;
 }
 
 interface Lead {
@@ -19,8 +21,22 @@ interface Lead {
   cnaeDescricao: string | null;
   uf: string;
   municipio: string | null;
+  bairro: string | null;
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  telefone: string | null;
+  email: string | null;
   porte: string | null;
+  status: "migrado" | "geracao_propria" | "cativo";
+  temGeracaoPropria: boolean;
 }
+
+const STATUS_LABEL: Record<Lead["status"], string> = {
+  migrado: "Migrado (CCEE)",
+  geracao_propria: "Geração própria",
+  cativo: "Provável cativo",
+};
 
 interface FilterOptions {
   ufs: string[];
@@ -166,16 +182,18 @@ export default function DashboardPage() {
       </header>
 
       {stats && (
-        <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
           <StatCard label="Universo de candidatos (Grupo A por perfil)" value={stats.totalCandidates} />
           <StatCard label="Já migrados (CCEE)" value={stats.migratedRaizCount} />
+          <StatCard label="Geração própria (ANEEL SIGA-GD)" value={stats.selfGenRaizCount} />
           <StatCard label="Leads (provavelmente ainda cativos)" value={stats.totalLeads} />
         </section>
       )}
 
-      <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <SyncButton label="Sincronizar CCEE (migrados)" endpoint="/api/sync/ccee" lastSync={stats?.lastCceeSync ?? null} />
         <SyncButton label="Sincronizar RFB (universo por CNAE)" endpoint="/api/sync/rfb" lastSync={stats?.lastRfbSync ?? null} />
+        <SyncButton label="Sincronizar ANEEL SIGA-GD (geração própria)" endpoint="/api/sync/siga" lastSync={stats?.lastSigaSync ?? null} />
       </section>
 
       <section className="mb-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
@@ -244,17 +262,18 @@ export default function DashboardPage() {
               <th className="px-4 py-2">Razão Social</th>
               <th className="px-4 py-2">CNPJ</th>
               <th className="px-4 py-2">CNAE</th>
-              <th className="px-4 py-2">UF</th>
-              <th className="px-4 py-2">Município</th>
+              <th className="px-4 py-2">Localização</th>
+              <th className="px-4 py-2">Contato</th>
+              <th className="px-4 py-2">Status</th>
               <th className="px-4 py-2">Porte</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={6} className="px-4 py-6 text-center text-neutral-400">Carregando...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-neutral-400">Carregando...</td></tr>
             )}
             {!loading && leads.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-6 text-center text-neutral-400">
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-neutral-400">
                 Nenhum lead encontrado. Rode as sincronizações acima para popular a base.
               </td></tr>
             )}
@@ -269,8 +288,30 @@ export default function DashboardPage() {
                   <div>{lead.cnae}</div>
                   {lead.cnaeDescricao && <div className="text-xs text-neutral-500">{lead.cnaeDescricao}</div>}
                 </td>
-                <td className="px-4 py-2">{lead.uf}</td>
-                <td className="px-4 py-2">{lead.municipio}</td>
+                <td className="px-4 py-2">
+                  <div>{[lead.logradouro, lead.numero].filter(Boolean).join(", ")}</div>
+                  <div className="text-xs text-neutral-500">
+                    {[lead.bairro, lead.municipio, lead.uf].filter(Boolean).join(" - ")}
+                    {lead.cep && ` · CEP ${lead.cep}`}
+                  </div>
+                </td>
+                <td className="px-4 py-2">
+                  <div className="text-xs">{lead.telefone ?? "—"}</div>
+                  <div className="text-xs text-neutral-500">{lead.email ?? ""}</div>
+                </td>
+                <td className="px-4 py-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs ${
+                      lead.status === "migrado"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : lead.status === "geracao_propria"
+                          ? "bg-sky-100 text-sky-700"
+                          : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {STATUS_LABEL[lead.status]}
+                  </span>
+                </td>
                 <td className="px-4 py-2">{lead.porte}</td>
               </tr>
             ))}
