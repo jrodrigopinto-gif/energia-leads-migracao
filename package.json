@@ -11,7 +11,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "sync:ccee": "tsx scripts/sync-ccee.ts",
     "sync:rfb": "tsx scripts/sync-rfb.ts",
-    "sync:siga": "tsx scripts/sync-siga.ts"
+    "sync:siga": "tsx scripts/sync-siga.ts",
+    "geocode": "tsx scripts/geocode-leads.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

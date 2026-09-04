@@ -18,7 +18,7 @@ function toCsv(rows: Awaited<ReturnType<typeof getAllLeadsForExport>>): string {
   const header = [
     "CNPJ", "Razão Social", "Nome Fantasia", "CNAE", "Descrição CNAE", "Status",
     "Telefone", "E-mail", "Logradouro", "Número", "Complemento", "Bairro", "CEP",
-    "Município", "UF", "Porte", "Data Abertura",
+    "Município", "UF", "Latitude", "Longitude", "Porte", "Data Abertura",
   ];
   const lines = rows.map((r) =>
     [
@@ -37,6 +37,8 @@ function toCsv(rows: Awaited<ReturnType<typeof getAllLeadsForExport>>): string {
       r.cep ?? "",
       r.municipio ?? "",
       r.uf,
+      r.latitude ?? "",
+      r.longitude ?? "",
       r.porte ?? "",
       r.dataAbertura ?? "",
     ]

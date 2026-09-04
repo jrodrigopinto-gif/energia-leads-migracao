@@ -37,6 +37,9 @@ model CandidateCompany {
   situacaoCadastral String?
   dataAbertura      String?
   capitalSocial     Float?
+  latitude          Float?
+  longitude         Float?
+  geocodedAt        DateTime?
   source            String   @default("RFB")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -45,6 +48,17 @@ model CandidateCompany {
   @@index([uf])
   @@index([cnae])
   @@index([cep])
+}
+
+// Cache de geocodificação por CEP (BrasilAPI), para não repetir a mesma
+// consulta HTTP para candidatos que compartilham o CEP (comum em distritos
+// industriais/shoppings/condomínios empresariais).
+model CepGeocode {
+  cep       String   @id
+  latitude  Float?
+  longitude Float?
+  found     Boolean  @default(false)
+  updatedAt DateTime @updatedAt
 }
 
 // Consumidores com geração própria identificada (mini/microgeração distribuída

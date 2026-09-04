@@ -6,10 +6,12 @@ interface Stats {
   totalCandidates: number;
   migratedRaizCount: number;
   selfGenRaizCount: number;
+  geocodedCount: number;
   totalLeads: number;
   lastCceeSync: { finishedAt: string | null; status: string; recordsProcessed: number } | null;
   lastRfbSync: { finishedAt: string | null; status: string; recordsProcessed: number } | null;
   lastSigaSync: { finishedAt: string | null; status: string; recordsProcessed: number } | null;
+  lastGeocodeSync: { finishedAt: string | null; status: string; recordsProcessed: number } | null;
 }
 
 interface Lead {
@@ -27,6 +29,8 @@ interface Lead {
   numero: string | null;
   telefone: string | null;
   email: string | null;
+  latitude: number | null;
+  longitude: number | null;
   porte: string | null;
   status: "migrado" | "geracao_propria" | "cativo";
   temGeracaoPropria: boolean;
@@ -182,18 +186,20 @@ export default function DashboardPage() {
       </header>
 
       {stats && (
-        <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-5">
           <StatCard label="Universo de candidatos (Grupo A por perfil)" value={stats.totalCandidates} />
           <StatCard label="Já migrados (CCEE)" value={stats.migratedRaizCount} />
           <StatCard label="Geração própria (ANEEL SIGA-GD)" value={stats.selfGenRaizCount} />
+          <StatCard label="Geocodificados (lat/lng)" value={stats.geocodedCount} />
           <StatCard label="Leads (provavelmente ainda cativos)" value={stats.totalLeads} />
         </section>
       )}
 
-      <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <SyncButton label="Sincronizar CCEE (migrados)" endpoint="/api/sync/ccee" lastSync={stats?.lastCceeSync ?? null} />
         <SyncButton label="Sincronizar RFB (universo por CNAE)" endpoint="/api/sync/rfb" lastSync={stats?.lastRfbSync ?? null} />
         <SyncButton label="Sincronizar ANEEL SIGA-GD (geração própria)" endpoint="/api/sync/siga" lastSync={stats?.lastSigaSync ?? null} />
+        <SyncButton label="Geocodificar (CEP → lat/lng, BrasilAPI)" endpoint="/api/geocode?limit=200" lastSync={stats?.lastGeocodeSync ?? null} />
       </section>
 
       <section className="mb-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
@@ -294,6 +300,16 @@ export default function DashboardPage() {
                     {[lead.bairro, lead.municipio, lead.uf].filter(Boolean).join(" - ")}
                     {lead.cep && ` · CEP ${lead.cep}`}
                   </div>
+                  {lead.latitude != null && lead.longitude != null && (
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${lead.latitude}&mlon=${lead.longitude}#map=16/${lead.latitude}/${lead.longitude}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-sky-600 hover:underline"
+                    >
+                      ver no mapa
+                    </a>
+                  )}
                 </td>
                 <td className="px-4 py-2">
                   <div className="text-xs">{lead.telefone ?? "—"}</div>

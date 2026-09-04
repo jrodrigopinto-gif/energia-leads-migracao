@@ -43,6 +43,7 @@ cativa**.
 | Receita Federal | Dados Abertos do CNPJ (`Estabelecimentos*.zip` + `Empresas*.zip`) | Universo de empresas ativas por CNAE/UF/porte, com telefone/e-mail/endereço completo | Sim |
 | ANEEL — SIGA Geração Distribuída | CKAN API | Consumidores PJ com geração própria (mini/microgeração, autoprodução) | Sim (CNPJ do titular) |
 | ANEEL (BDGD) | — | Não usada para identificação (dados anonimizados) — ver ressalva acima | Não |
+| BrasilAPI | `GET /api/cep/v2/{cep}` | Latitude/longitude a partir do CEP (não todo CEP tem coordenadas) | N/A (geocodificação, não identificação) |
 
 A lista de CNAEs usada para montar o universo de candidatos fica em
 [`src/config/cnae.ts`](./src/config/cnae.ts) — edite/expanda conforme o
@@ -112,6 +113,23 @@ Ou pelo botão "Sincronizar" no dashboard (chama `POST /api/sync/siga`).
 antes do primeiro sync — o nome exato (`ANEEL_GD_DATASET`) já mudou entre
 publicações do portal.
 
+### Geocodificação (CEP → latitude/longitude) — via BrasilAPI, sem chave
+
+```bash
+npm run geocode
+```
+
+Ou pelo botão "Geocodificar" no dashboard (chama `POST /api/geocode`, lote de
+200 por vez para não estourar timeout). Roda **depois** do `sync:rfb`, já que
+usa o CEP persistido nos candidatos. Resultados de CEP ficam em cache
+(`CepGeocode`) — candidatos que compartilham CEP (comum em distritos
+industriais/shoppings) não repetem a consulta. Nem todo CEP tem coordenadas
+na BrasilAPI; nesse caso o candidato fica marcado como já processado
+(`geocodedAt` preenchido) mas sem lat/lng, e não é reconsultado à toa.
+
+Variável de ambiente opcional: `BRASILAPI_BASE_URL` (default:
+`https://brasilapi.com.br/api`).
+
 ### Receita Federal (universo de candidatos) — pesado
 
 ```bash
@@ -168,7 +186,7 @@ resolver:
    | `dadosabertos.ccee.org.br` | `sync:ccee` |
    | `dadosabertos.rfb.gov.br` | `sync:rfb` |
    | `dadosabertos.aneel.gov.br` | `sync:siga` |
-   | `brasilapi.com.br` (opcional) | fallback de consulta CNPJ/CEP sem chave, ver abaixo |
+   | `brasilapi.com.br` | `geocode` (CEP → lat/lng) |
    | `receitaws.com.br` (opcional) | fallback de consulta CNPJ sem chave, ver abaixo |
    | `viacep.com.br` (opcional) | fallback/validação de CEP sem chave, ver abaixo |
 
@@ -177,17 +195,15 @@ confiar 100% no parser (o layout do CSV da CCEE já mudou de formato entre
 publicações, e o código tenta reconhecer colunas por nome parcial para ser
 resiliente a isso, mas confirme com uma execução real).
 
-### Fontes alternativas sem chave (não usadas ainda, mas mapeadas)
+### Outras fontes sem chave (mapeadas, não usadas ainda)
 
-Nenhuma delas substitui a RFB para montar o universo completo (são só
-consulta unitária por CNPJ/CEP, não bulk download), mas servem para
-validar/enriquecer pontualmente um lead específico sem precisar de chave de
-API paga:
+Não substituem a RFB para montar o universo completo (são consulta unitária
+por CNPJ/CEP, não bulk download), mas servem para validar/enriquecer
+pontualmente um lead específico sem precisar de chave de API paga:
 
-- [BrasilAPI](https://brasilapi.com.br) — `GET /api/cnpj/v1/{cnpj}`
-  (dados cadastrais + endereço), `GET /api/cep/v2/{cep}` (endereço com
-  latitude/longitude quando disponível — útil para o passo de geocodificação
-  citado em "Próximos passos").
+- [BrasilAPI](https://brasilapi.com.br) — `GET /api/cnpj/v1/{cnpj}` (dados
+  cadastrais + endereço, útil para checar se um lead mudou de endereço desde
+  o último `sync:rfb`); `GET /api/cep/v2/{cep}` já é usado pelo `geocode`.
 - [ReceitaWS](https://receitaws.com.br) — `GET /v1/cnpj/{cnpj}`, alternativa
   à BrasilAPI para dados cadastrais por CNPJ (limite de requisições no plano
   gratuito).
@@ -202,6 +218,7 @@ src/
     api/sync/ccee       # POST — dispara sync CCEE
     api/sync/rfb        # POST — dispara sync RFB
     api/sync/siga       # POST — dispara sync ANEEL SIGA-GD (geração própria)
+    api/geocode         # POST — geocodifica candidatos pendentes (CEP → lat/lng)
     api/leads           # GET — lista/filtra/exporta leads (?format=csv)
     api/stats           # GET — estatísticas do dashboard
   config/cnae.ts        # lista de CNAEs "grande/médio consumidor" (~90 códigos)
@@ -210,27 +227,29 @@ src/
     rfb.ts              # ingestão RFB (streaming zip/csv) — inclui telefone/e-mail/endereço
     rfbLayout.ts         # parsing dos layouts de Estabelecimentos/Empresas
     siga.ts             # ingestão ANEEL SIGA-GD (CKAN API) — geração própria identificada
+    geocode.ts          # geocodificação de CEP via BrasilAPI, com cache em CepGeocode
     leads.ts            # lógica de cruzamento (candidatos - migrados, + status de geração própria)
     cnpj.ts             # normalização de CNPJ / CNPJ raiz
 prisma/
-  schema.prisma         # CandidateCompany, MigratedConsumer, SelfGenerationConsumer, SyncLog
+  schema.prisma         # CandidateCompany, MigratedConsumer, SelfGenerationConsumer, CepGeocode, SyncLog
   seed.ts               # dados de exemplo fictícios
 scripts/
   sync-ccee.ts          # CLI para rodar o sync CCEE (cron)
   sync-rfb.ts           # CLI para rodar o sync RFB (cron/background)
   sync-siga.ts          # CLI para rodar o sync ANEEL SIGA-GD (cron)
+  geocode-leads.ts      # CLI para geocodificar todos os candidatos pendentes (cron)
 ```
 
 ## Próximos passos sugeridos
 
 - Persistir em Postgres em produção (SQLite é só para dev local).
-- Agendar `sync:ccee` (ex: mensal), `sync:rfb` (ex: trimestral) e `sync:siga`
-  (ex: mensal, a ANEEL publica o SIGA-GD periodicamente) via cron.
+- Agendar `sync:ccee` (ex: mensal), `sync:rfb` (ex: trimestral), `sync:siga`
+  (ex: mensal, a ANEEL publica o SIGA-GD periodicamente) e `geocode` (logo
+  após cada `sync:rfb`) via cron.
 - Autenticação, caso o dashboard vá para além de uso pessoal/interno.
-- Geocodificação (CEP → latitude/longitude) para exibir os leads em mapa —
-  o endereço completo já é persistido; falta só o passo de geocoding (ex:
-  via ViaCEP + provedor de geocoding, em lote, com cache local para não
-  repetir chamadas a cada sync).
+- Exibir os leads em mapa (a latitude/longitude já são persistidas pelo
+  `geocode`; falta só o componente de mapa no dashboard — hoje cada linha só
+  linka para o OpenStreetMap).
 - Contato de decisor (nome, cargo) via ferramentas de prospecção B2B, sob
   demanda e com custo por lead — fora do escopo automatizado deste app;
   telefone/e-mail institucional já vêm da RFB.

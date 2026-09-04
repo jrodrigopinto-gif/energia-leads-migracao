@@ -133,31 +133,44 @@ export async function getFilterOptions() {
 }
 
 export async function getStats() {
-  const [totalCandidates, migratedRaizCount, selfGenRaizCount, totalLeads, lastCceeSync, lastRfbSync, lastSigaSync] =
-    await Promise.all([
-      prisma.candidateCompany.count(),
-      prisma.migratedConsumer
-        .findMany({ select: { cnpjRaiz: true }, distinct: ["cnpjRaiz"] })
-        .then((r) => r.length),
-      prisma.selfGenerationConsumer
-        .findMany({ select: { cnpjRaiz: true }, distinct: ["cnpjRaiz"] })
-        .then((r) => r.length),
-      (async () => {
-        const excludeRaiz = Array.from(await migratedRaizSet());
-        return prisma.candidateCompany.count({ where: { cnpjRaiz: { notIn: excludeRaiz } } });
-      })(),
-      prisma.syncLog.findFirst({ where: { source: "CCEE" }, orderBy: { startedAt: "desc" } }),
-      prisma.syncLog.findFirst({ where: { source: "RFB" }, orderBy: { startedAt: "desc" } }),
-      prisma.syncLog.findFirst({ where: { source: "ANEEL_SIGA_GD" }, orderBy: { startedAt: "desc" } }),
-    ]);
+  const [
+    totalCandidates,
+    migratedRaizCount,
+    selfGenRaizCount,
+    geocodedCount,
+    totalLeads,
+    lastCceeSync,
+    lastRfbSync,
+    lastSigaSync,
+    lastGeocodeSync,
+  ] = await Promise.all([
+    prisma.candidateCompany.count(),
+    prisma.migratedConsumer
+      .findMany({ select: { cnpjRaiz: true }, distinct: ["cnpjRaiz"] })
+      .then((r) => r.length),
+    prisma.selfGenerationConsumer
+      .findMany({ select: { cnpjRaiz: true }, distinct: ["cnpjRaiz"] })
+      .then((r) => r.length),
+    prisma.candidateCompany.count({ where: { latitude: { not: null } } }),
+    (async () => {
+      const excludeRaiz = Array.from(await migratedRaizSet());
+      return prisma.candidateCompany.count({ where: { cnpjRaiz: { notIn: excludeRaiz } } });
+    })(),
+    prisma.syncLog.findFirst({ where: { source: "CCEE" }, orderBy: { startedAt: "desc" } }),
+    prisma.syncLog.findFirst({ where: { source: "RFB" }, orderBy: { startedAt: "desc" } }),
+    prisma.syncLog.findFirst({ where: { source: "ANEEL_SIGA_GD" }, orderBy: { startedAt: "desc" } }),
+    prisma.syncLog.findFirst({ where: { source: "GEOCODE" }, orderBy: { startedAt: "desc" } }),
+  ]);
 
   return {
     totalCandidates,
     migratedRaizCount,
     selfGenRaizCount,
+    geocodedCount,
     totalLeads,
     lastCceeSync,
     lastRfbSync,
     lastSigaSync,
+    lastGeocodeSync,
   };
 }
