@@ -1,0 +1,66 @@
+name: Sincronizar dados de energia
+
+# Roda os syncs (CCEE, RFB, ANEEL SIGA-GD, geocodificação) num runner do
+# GitHub, que tem acesso irrestrito à internet — ao contrário de ambientes
+# Claude Code on the web, que bloqueiam esses domínios por política de rede.
+#
+# Requer o secret DATABASE_URL configurado no repositório (Settings > Secrets
+# and variables > Actions > New repository secret), apontando para um
+# Postgres acessível pela internet (ex: Supabase, Neon, Railway — todos têm
+# tier gratuito). Veja o README para o passo a passo.
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Qual sync rodar"
+        required: true
+        type: choice
+        default: ccee
+        options:
+          - ccee
+          - rfb
+          - siga
+          - geocode
+          - todos
+  schedule:
+    # CCEE + SIGA-GD + geocode: leves, rodam automaticamente todo dia 1 às 06:00 UTC.
+    # RFB (pesado, pode levar horas) fica só no disparo manual acima.
+    - cron: "0 6 1 * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      RFB_MONTH: ${{ vars.RFB_MONTH }}
+      ANEEL_GD_DATASET: ${{ vars.ANEEL_GD_DATASET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Aplicar migrações do banco
+        run: npx prisma migrate deploy
+
+      - name: Sync CCEE (migrados)
+        if: github.event_name == 'schedule' || inputs.job == 'ccee' || inputs.job == 'todos'
+        run: npm run sync:ccee
+
+      - name: Sync ANEEL SIGA-GD (geração própria)
+        if: github.event_name == 'schedule' || inputs.job == 'siga' || inputs.job == 'todos'
+        run: npm run sync:siga
+
+      - name: Geocodificar (CEP -> lat/lng)
+        if: github.event_name == 'schedule' || inputs.job == 'geocode' || inputs.job == 'todos'
+        run: npm run geocode
+
+      - name: Sync RFB (universo de candidatos) — só no disparo manual
+        if: github.event_name == 'workflow_dispatch' && (inputs.job == 'rfb' || inputs.job == 'todos')
+        run: npm run sync:rfb

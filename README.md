@@ -170,13 +170,18 @@ recusados pelo proxy do ambiente (HTTP 403 no `CONNECT`). Ou seja: **não é
 um problema de autenticação/chave de API** — nenhuma chave resolve um
 domínio bloqueado na política de rede.
 
+Testado também nos dois ambientes "Default" disponíveis nesta conta — ambos
+com o mesmo bloqueio, então não é peculiaridade de uma sessão específica.
+
 O código de ingestão segue os formatos oficiais documentados dessas bases e
-está pronto para rodar assim que a rede for liberada. Duas formas de
+está pronto para rodar assim que a rede for liberada. Três formas de
 resolver:
 
-1. **Rodar fora deste ambiente** — sua máquina, um servidor, ou uma sessão
+1. **GitHub Actions** (recomendado, não precisa de máquina própria) — ver
+   seção "Rodando via GitHub Actions" abaixo.
+2. **Rodar fora deste ambiente** — sua máquina, um servidor, ou uma sessão
    local do Claude Code sem essa restrição de rede.
-2. **Liberar os domínios na política de rede do ambiente** (em
+3. **Liberar os domínios na política de rede do ambiente** (em
    claude.ai/code, ao criar/editar o ambiente — ver
    [docs](https://code.claude.com/docs/en/claude-code-on-the-web)). Domínios
    usados por este app:
@@ -210,9 +215,48 @@ pontualmente um lead específico sem precisar de chave de API paga:
 - [ViaCEP](https://viacep.com.br) — `GET /ws/{cep}/json/`, endereço a partir
   do CEP (sem latitude/longitude).
 
+## Rodando via GitHub Actions (sem precisar de máquina própria)
+
+Runners do GitHub têm acesso irrestrito à internet — não têm a restrição de
+rede de ambientes Claude Code on the web citada acima. O workflow
+[`.github/workflows/sync-energia.yml`](.github/workflows/sync-energia.yml)
+roda os 4 syncs lá.
+
+**Configuração (uma vez só):**
+
+1. Suba um Postgres acessível pela internet. Qualquer um destes tem tier
+   gratuito suficiente para este app: [Supabase](https://supabase.com),
+   [Neon](https://neon.tech), [Railway](https://railway.app). Copie a
+   connection string (formato `postgresql://usuario:senha@host:porta/banco`).
+2. No repositório no GitHub: **Settings → Secrets and variables → Actions →
+   New repository secret**, nome `DATABASE_URL`, valor a connection string
+   do passo 1.
+3. (Opcional) Em **Variables** na mesma tela, adicione `RFB_MONTH` ou
+   `ANEEL_GD_DATASET` se precisar sobrescrever os defaults (ver variáveis de
+   ambiente acima).
+
+**Uso:**
+
+- **Manual**: aba **Actions** → workflow "Sincronizar dados de energia" →
+  **Run workflow** → escolha `ccee`, `siga`, `geocode`, `rfb` ou `todos`.
+  Rode `rfb` primeiro isoladamente na primeira vez (pode levar horas — o
+  workflow tem timeout de 6h) antes de rodar `geocode`.
+- **Automático**: todo dia 1 do mês às 06:00 UTC, o workflow roda `ccee` +
+  `siga` + `geocode` sozinho (o `rfb` fica de fora do agendamento por ser
+  pesado — dispare manualmente quando quiser atualizar o universo completo,
+  ex: trimestralmente).
+- Acompanhe o resultado na aba **Actions**; os logs de cada step mostram
+  quantos registros foram processados (o mesmo que apareceria no
+  `SyncLog`/dashboard).
+
+Depois de rodar, veja os dados com `npm run dev` local apontando o
+`DATABASE_URL` para o mesmo Postgres, ou exportando CSV direto do banco.
+
 ## Estrutura
 
 ```
+.github/workflows/
+  sync-energia.yml     # roda os syncs num runner do GitHub (sem restrição de rede)
 src/
   app/                 # páginas e rotas de API (App Router)
     api/sync/ccee       # POST — dispara sync CCEE
